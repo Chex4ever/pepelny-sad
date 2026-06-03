@@ -1,0 +1,7 @@
+{
+  "woven_pack": {
+    "name": "Плетёный рюкзак",
+    "art_id": "woven_pack",
+    "effect": {"inventory": 4}
+  }
+}

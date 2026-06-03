@@ -1,0 +1,8 @@
+{
+  "grey_herb": {"name": "Серая трава", "stack_max": 20, "art_id": "grey_herb"},
+  "root_fiber": {"name": "Корневое волокно", "stack_max": 20, "art_id": "root_fiber"},
+  "ash_clump": {"name": "Комок пепла", "stack_max": 30, "art_id": "ash_clump"},
+  "star_shard": {"name": "Осколок звезды", "stack_max": 10, "art_id": "star_shard"},
+  "echo_dust": {"name": "Пыль эха", "stack_max": 20, "art_id": "echo_dust"},
+  "lantern_glass": {"name": "Стекло фонаря", "stack_max": 5, "art_id": "lantern_glass"}
+}

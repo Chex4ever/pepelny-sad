@@ -1,0 +1,10 @@
+[
+  {"id": "grey_tincture", "station": "companion", "ingredients": [{"id": "grey_herb", "count": 3}], "discover": "scan:listen"},
+  {"id": "woven_pack", "station": "forge", "ingredients": [{"id": "root_fiber", "count": 5}, {"id": "ash_clump", "count": 3}], "discover": "always"},
+  {"id": "ash_blade", "station": "forge", "ingredients": [{"id": "ash_clump", "count": 4}, {"id": "star_shard", "count": 1}], "discover": "scan:warm"},
+  {"id": "root_staff", "station": "forge", "ingredients": [{"id": "root_fiber", "count": 4}, {"id": "grey_herb", "count": 2}], "discover": "always"},
+  {"id": "root_greaves", "station": "forge", "ingredients": [{"id": "root_fiber", "count": 3}, {"id": "ash_clump", "count": 2}], "discover": "always"},
+  {"id": "ash_tunic", "station": "forge", "ingredients": [{"id": "ash_clump", "count": 5}, {"id": "root_fiber", "count": 3}], "discover": "always"},
+  {"id": "star_amulet", "station": "loom", "ingredients": [{"id": "star_shard", "count": 2}, {"id": "echo_dust", "count": 4}], "discover": "scan:pain"},
+  {"id": "pepel_lantern", "station": "loom", "ingredients": [{"id": "lantern_glass", "count": 1}, {"id": "echo_dust", "count": 2}, {"id": "ash_clump", "count": 2}], "discover": "always"}
+]

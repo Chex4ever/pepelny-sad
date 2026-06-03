@@ -1,0 +1,274 @@
+"""Main overworld exploration scene."""
+from __future__ import annotations
+
+import pygame
+
+from src.constants import MAP_VIEW_H, MAP_VIEW_W, SCREEN_H, SCREEN_W
+from src.data.art_loader import load_materials
+from src.overworld.fov import compute_fov
+from src.overworld.player import OverworldPlayer
+from src.story.dialogues import get_dialogue
+from src.ui.character_sheet import CharacterSheet
+from src.ui.craft_station import CraftStation
+from src.ui.examine_panel import ExaminePanel
+from src.ui.log_panel import LogPanel
+from src.world.companions import companion_pos_for_player, has_service
+from src.world.dungeon_stitcher import ensure_dungeon
+from src.world.lighting import ambient_for_turn, sky_char, torch_char, torch_flicker
+from src.world.pepel_weather import PepelWeather
+from src.world.save import load_game, save_game
+
+
+class OverworldScene:
+    def __init__(self, game):
+        self.game = game
+        self.player = OverworldPlayer(x=20, y=24)
+        self.log = LogPanel()
+        self.sheet = CharacterSheet()
+        self.craft = CraftStation()
+        self.examine = ExaminePanel()
+        self.weather = PepelWeather(game.world_state.world_seed)
+        self.dialogue_lines: list[str] = []
+        self.dialogue_idx = 0
+        self.dialogue_open = False
+        self.dialogue_id = ""
+        self.pending_battle: str | None = None
+        self.frame = 0
+        self.visible: set[tuple[int, int]] = set()
+        if game.world_state.layer == "dungeon":
+            ensure_dungeon(game.world_state, game.world_map)
+            self.player.x, self.player.y = 2, 2
+
+    def _fov_radius(self) -> int:
+        base = 6 if self.game.world_state.layer == "dungeon" else 8
+        _, penalty = self.weather.on_turn(False) if False else (False, 0)
+        return max(3, base - penalty)
+
+    def _in_shelter(self) -> bool:
+        ch, _, _ = self.game.world_map.get_tile(self.player.x, self.player.y, self.game.world_state.layer)
+        return ch in "l&@=" or abs(self.player.x) < 20 and abs(self.player.y) < 20
+
+    def update(self):
+        self.frame += 1
+        layer = self.game.world_state.layer
+        radius = 8 if layer == "surface" else 6
+        active, penalty = self.weather.on_turn(self._in_shelter())
+        if active and layer == "surface" and not self._in_shelter():
+            radius -= penalty
+
+        def vis(x, y):
+            return self.game.world_map.is_walkable(x, y, layer) or True
+
+        self.visible = compute_fov(self.player.x, self.player.y, radius, vis)
+
+    def _battle_for_tile(self, ch: str, wx: int, wy: int) -> str | None:
+        if ch != "!":
+            return None
+        key = (wx, wy, self.game.world_state.layer)
+        if key in self.game.world_state.defeated_battles:
+            return None
+        if self.game.world_state.layer == "dungeon":
+            return "warden" if self.game.world_state.dungeon_entered else "sorrow"
+        if wy > 30:
+            return "sorrow"
+        if abs(wx) > 40:
+            return "whisper"
+        return "whisper"
+
+    def handle_input(self, inp):
+        if self.examine.open:
+            if inp.pressed(pygame.K_ESCAPE):
+                self.examine.close()
+            return
+        if self.dialogue_open:
+            if inp.any_pressed(pygame.K_RETURN, pygame.K_SPACE, pygame.K_e):
+                self.dialogue_idx += 1
+                if self.dialogue_idx >= len(self.dialogue_lines):
+                    self.dialogue_open = False
+            if inp.pressed(pygame.K_o):
+                aid = {"elder_intro": "elder", "whisper_companion": "whisper_companion"}.get(
+                    self.dialogue_id, "elion"
+                )
+                self.examine.show(aid)
+            return
+        if self.sheet.handle_input(inp, self.game.profile, self.examine):
+            return
+        if self.craft.handle_input(inp, self.game.profile, self.game.world_state, self.examine, self.log):
+            return
+
+        if inp.pressed(pygame.K_TAB):
+            self.sheet.open = not self.sheet.open
+            return
+        if inp.pressed(pygame.K_F5):
+            self._save_checkpoint()
+            self.log.add("Сохранено (F5).")
+            return
+        if inp.pressed(pygame.K_F9):
+            data = load_game()
+            if data:
+                self.game.restore_state(data)
+                self.log.add("Загружено.")
+            return
+
+        d = inp.dir_key()
+        if d:
+            nx, ny = self.player.x + d[0], self.player.y + d[1]
+            layer = self.game.world_state.layer
+            if self.game.world_map.is_walkable(nx, ny, layer):
+                ch, _, _ = self.game.world_map.get_tile(nx, ny, layer)
+                if ch == ">":
+                    self.game.world_state.layer = "dungeon"
+                    ensure_dungeon(self.game.world_state, self.game.world_map)
+                    self.player.x, self.player.y = 2, 2
+                    self.log.add("Спуск в подземелье.")
+                    return
+                if ch == "<":
+                    self.game.world_state.layer = "surface"
+                    self.player.x, self.player.y = 80, 24
+                    self.log.add("Выход на поверхность.")
+                    return
+                self.player.move(d[0], d[1])
+                self.game.world_state.turn_count += 1
+                active, _ = self.weather.on_turn(self._in_shelter())
+                if active and layer == "surface":
+                    self.log.add("Пепельный ветер...")
+                bid = self._battle_for_tile(ch, nx, ny)
+                if bid:
+                    self.pending_battle = bid
+                    self.game.world_state.defeated_battles.add((nx, ny, layer))
+
+        if inp.pressed(pygame.K_e):
+            self._interact()
+
+    def _interact(self):
+        layer = self.game.world_state.layer
+        px, py = self.player.x, self.player.y
+        for dx, dy in [(0, 0), self.player.facing, (1, 0), (-1, 0), (0, 1), (0, -1)]:
+            tx, ty = px + dx, py + dy
+            ch, _, _ = self.game.world_map.get_tile(tx, ty, layer)
+            if ch == "o":
+                active, _ = self.weather.on_turn(self._in_shelter())
+                if active and layer == "surface" and not self._in_shelter():
+                    self.log.add("Пепельный ветер — трава недоступна.")
+                    return
+                self.game.profile.inventory.add("grey_herb", 1, 20)
+                self._clear_tile(tx, ty, layer)
+                self.log.add("Собрана серая трава.")
+                return
+            if ch == "+":
+                self.game.profile.inventory.add("root_fiber", 1, 20)
+                self._clear_tile(tx, ty, layer)
+                self.log.add("Собрано корневое волокно.")
+                return
+            if ch == "*":
+                self.game.profile.inventory.add("star_shard", 1, 10)
+                self._clear_tile(tx, ty, layer)
+                self.log.add("Найден осколок звезды.")
+                return
+            if ch == "$":
+                self.game.profile.inventory.add("ash_clump", 2, 30)
+                self.log.add("Подобран пепел.")
+                return
+            if ch == "&":
+                self.craft.open_station("forge")
+                return
+            if ch == "~":
+                self.craft.open_station("loom")
+                return
+            if ch == "@":
+                self._open_dialogue("elder_intro")
+                return
+        if has_service(self.game.world_state.companions, "mobile_forge"):
+            cx, cy = companion_pos_for_player(px, py)
+            if abs(cx - px) + abs(cy - py) <= 2:
+                self.craft.open_station("companion")
+                self._open_dialogue("whisper_companion")
+                return
+        if "sorrow_companion" in self.game.world_state.companions:
+            self.log.add("Осколки мерцают вдали...")
+
+    def _clear_tile(self, tx: int, ty: int, layer: str):
+        if layer == "dungeon":
+            self.game.world_map.set_dungeon_tile(tx, ty, ".")
+        else:
+            cx, cy, lx, ly = self.game.world_map.world_to_chunk(tx, ty)
+            chunk = self.game.world_map.chunks.get((cx, cy))
+            if chunk:
+                chunk.set(lx, ly, ".")
+
+    def _open_dialogue(self, did: str):
+        self.dialogue_id = did
+        self.dialogue_lines = get_dialogue(did)
+        self.dialogue_idx = 0
+        self.dialogue_open = True
+
+    def _save_checkpoint(self):
+        save_game(self.game.serialize_state())
+
+    def draw(self, buf):
+        from src.constants import COLOR_BG, COLOR_GRASS, COLOR_GRASS_FG, COLOR_SURFACE_SKY, COLOR_TEXT
+        from src.world.dungeon_reskin import reskin_char
+        from src.world.lighting import ambient_for_turn
+
+        buf.clear(bg=COLOR_BG)
+        layer = self.game.world_state.layer
+        wx0 = self.player.x - MAP_VIEW_W // 2
+        wy0 = self.player.y - MAP_VIEW_H // 2
+        weather_dim = self.weather.ambient_penalty() if layer == "surface" else 0
+        ambient = ambient_for_turn(self.game.world_state.turn_count, layer, weather_dim)
+
+        if layer == "surface":
+            sky = sky_char(self.game.world_state.turn_count)
+            for x in range(MAP_VIEW_W):
+                buf.set(x, 0, sky, fg=(180, 180, 200), bg=COLOR_SURFACE_SKY, light=ambient)
+
+        for vy in range(MAP_VIEW_H):
+            for vx in range(MAP_VIEW_W):
+                wx, wy = wx0 + vx, wy0 + vy
+                ch, fg, bg = self.game.world_map.get_tile(wx, wy, layer)
+                if layer == "dungeon":
+                    ch, override = reskin_char(ch, self.game.world_state.spare_count, self.game.world_state.kill_count)
+                    if override:
+                        fg = override
+                light = ambient
+                if ch in "li":
+                    light = ambient * torch_flicker(self.frame, wx + wy)
+                    ch = torch_char(self.frame)
+                if (wx, wy) not in self.visible and (wx, wy) != (self.player.x, self.player.y):
+                    ch = " "
+                    fg = (40, 40, 50)
+                    bg = (8, 8, 12)
+                    light = 0.3
+                elif has_service(self.game.world_state.companions, "shard_ping") and ch == "*":
+                    light = 1.2
+                buf.set(vx, vy + 1, ch, fg=fg, bg=bg, light=light)
+
+        px = self.player.x - wx0
+        py = self.player.y - wy0 + 1
+        if 0 <= px < MAP_VIEW_W and 0 <= py < MAP_VIEW_H + 1:
+            buf.set(px, py, "@", fg=(255, 220, 120), light=1.0)
+
+        for cid in self.game.world_state.companions:
+            cx, cy = companion_pos_for_player(self.player.x, self.player.y)
+            cpx, cpy = cx - wx0, cy - wy0 + 1
+            sym = "~" if "whisper" in cid else "*"
+            if 0 <= cpx < MAP_VIEW_W and 0 <= cpy < MAP_VIEW_H + 1:
+                buf.set(cpx, cpy, sym, fg=(150, 200, 180), light=1.0)
+
+        self.log.draw(buf, MAP_VIEW_W + 2, 1)
+        buf.draw_text(2, SCREEN_H - 3, f"Layer:{layer} Turn:{self.game.world_state.turn_count} Seed:{self.game.world_state.world_seed}", fg=COLOR_TEXT)
+        buf.draw_text(2, SCREEN_H - 2, "WASD E Tab F5-save | O examine", fg=COLOR_TEXT)
+
+        self.sheet.draw(buf, self.game.profile)
+        self.craft.draw(buf, self.game.profile, self.game.world_state, self.examine)
+        self.examine.draw(buf)
+
+        if self.dialogue_open and self.dialogue_idx < len(self.dialogue_lines):
+            buf.draw_box(10, SCREEN_H - 8, 70, 5, "ДИАЛОГ")
+            buf.draw_text(12, SCREEN_H - 6, self.dialogue_lines[self.dialogue_idx][:66], fg=COLOR_TEXT)
+
+    @property
+    def needs_battle(self) -> str | None:
+        b = self.pending_battle
+        self.pending_battle = None
+        return b
