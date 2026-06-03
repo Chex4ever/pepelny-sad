@@ -31,6 +31,7 @@ from src.ui.windows.window_manager import WindowManager
 from src.world.save import load_game
 from src.world.world_map import WorldMap
 from src.world.world_state import WorldState
+from src.version import get_version
 
 
 class Game:
@@ -39,7 +40,7 @@ class Game:
         init_paths(base)
         ensure_art_files()
         pygame.init()
-        pygame.display.set_caption("Пепельный Сад")
+        pygame.display.set_caption(f"Пепельный Сад v{get_version()}")
         self.screen = pygame.display.set_mode((SCREEN_W * CELL_W, SCREEN_H * CELL_H))
         if hasattr(pygame.key, "stop_text_input"):
             pygame.key.stop_text_input()

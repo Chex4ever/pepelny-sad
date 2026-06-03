@@ -1,10 +1,22 @@
 """Пепельный Сад — entry point."""
 import os
+import sys
+
+
+def _maybe_auto_update() -> None:
+    if not getattr(sys, "frozen", False):
+        return
+    from src.updater.manager import maybe_update, restart_if_needed
+
+    restart_if_needed(maybe_update())
+
 
 # Real display/input: dummy SDL from pytest must not leak into gameplay.
 for _var in ("SDL_VIDEODRIVER", "SDL_AUDIODRIVER"):
     if os.environ.get(_var) == "dummy":
         os.environ.pop(_var)
+
+_maybe_auto_update()
 
 from src.constants import init_paths
 
