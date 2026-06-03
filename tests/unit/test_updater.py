@@ -1,50 +1,50 @@
-"""Unit tests for incremental updater logic."""
+"""Unit tests for chained update application."""
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from pathlib import Path
 
-import pytest
-
-from src.updater.manager import (
-    apply_updates,
-    files_needing_update,
-    load_local_manifest,
-    maybe_update,
-    save_local_manifest,
-)
+from src.updater.manager import apply_update_package, maybe_update, save_local_version
 from src.updater.provider import UpdateProvider
+from src.updater.update_package import UpdatePackageInfo
 from src.updater.util import sha256_file
 
 
 class MockProvider(UpdateProvider):
-    def __init__(self, manifest: dict, files: dict[str, bytes]):
-        self.manifest = manifest
-        self.files = files
-        self.downloads: list[tuple[str, Path]] = []
+    def __init__(self, packages: list[UpdatePackageInfo], zips: dict[str, bytes]):
+        self.packages = packages
+        self.zips = zips
+        self.downloads: list[str] = []
 
-    def fetch_manifest(self) -> dict:
-        return self.manifest
+    def list_update_packages(self) -> list[UpdatePackageInfo]:
+        return self.packages
 
-    def download_file(self, url: str, destination: Path) -> None:
-        self.downloads.append((url, destination))
-        name = url.rsplit("/", 1)[-1]
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(self.files[name])
+    def download_bytes(self, url: str) -> bytes:
+        self.downloads.append(url)
+        for pkg in self.packages:
+            if pkg.download_url == url:
+                return self.zips[pkg.to_version]
+        raise KeyError(url)
 
 
-def _manifest(version: str, entries: list[tuple[str, bytes]]) -> dict:
-    files = []
-    for path, data in entries:
-        files.append(
-            {
-                "path": path,
-                "sha256": sha256_file_from_bytes(data),
-                "size": len(data),
-                "url": f"https://example.test/{path.replace('/', '--')}",
-            }
-        )
-    return {"version": version, "platform": "win-x64", "release_tag": f"v{version}", "files": files}
+def _make_zip(to_version: str, applies_from: list[str], files: dict[str, bytes]) -> bytes:
+    meta = {
+        "to_version": to_version,
+        "platform": "win-x64",
+        "applies_from": applies_from,
+        "files": [
+            {"path": path, "sha256": sha256_file_from_bytes(data), "size": len(data)}
+            for path, data in files.items()
+        ],
+    }
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("update.json", json.dumps(meta))
+        for path, data in files.items():
+            zf.writestr(path, data)
+    return buf.getvalue()
 
 
 def sha256_file_from_bytes(data: bytes) -> str:
@@ -53,87 +53,37 @@ def sha256_file_from_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def test_files_needing_update_detects_missing_and_changed(tmp_path, monkeypatch):
-    install = tmp_path / "app"
-    install.mkdir()
-    old = install / "game.dat"
-    old.write_bytes(b"old")
-    monkeypatch.setattr("src.updater.manager.install_dir", lambda: install)
-
-    local = {"version": "0.2.8", "files": [{"path": "game.dat", "sha256": sha256_file(old)}]}
-    remote = _manifest("0.2.9", [("game.dat", b"new"), ("extra.dll", b"x")])
-
-    pending = files_needing_update(local, remote)
-    paths = {e["path"] for e in pending}
-    assert paths == {"game.dat", "extra.dll"}
-
-
-def test_apply_updates_replaces_files(tmp_path, monkeypatch):
+def test_apply_update_package(tmp_path, monkeypatch):
     install = tmp_path / "app"
     install.mkdir()
     target = install / "game.dat"
     target.write_bytes(b"old")
     monkeypatch.setattr("src.updater.manager.install_dir", lambda: install)
 
-    remote = _manifest("0.2.9", [("game.dat", b"new")])
-    provider = MockProvider(remote, {"game.dat": b"new"})
-
-    changed = apply_updates(remote["files"], remote, provider)
-    assert changed is False
+    pkg = UpdatePackageInfo("0.2.9", "win-x64", ("0.2.8",), "https://x/0.2.9.zip", "v0.2.9")
+    payload = _make_zip("0.2.9", ["0.2.8"], {"game.dat": b"new"})
+    apply_update_package(payload, pkg, "0.2.8")
     assert target.read_bytes() == b"new"
-    assert load_local_manifest()["version"] == "0.2.9"
 
 
-def test_apply_updates_marks_main_exe_changed(tmp_path, monkeypatch):
-    install = tmp_path / "app"
-    install.mkdir()
-    exe = install / "pepelny-sad.exe"
-    exe.write_bytes(b"v1")
-    monkeypatch.setattr("src.updater.manager.install_dir", lambda: install)
-    monkeypatch.setattr("src.updater.manager.main_executable_name", lambda: "pepelny-sad.exe")
-
-    remote = _manifest("0.2.9", [("pepelny-sad.exe", b"v2")])
-    provider = MockProvider(remote, {"pepelny-sad.exe": b"v2"})
-    assert apply_updates(remote["files"], remote, provider) is True
-
-
-def test_maybe_update_skips_when_versions_equal(tmp_path, monkeypatch):
-    install = tmp_path / "app"
-    install.mkdir()
-    data = b"same"
-    f = install / "game.dat"
-    f.write_bytes(data)
-    monkeypatch.setattr("src.updater.manager.install_dir", lambda: install)
-    monkeypatch.setattr("src.updater.manager.is_frozen", lambda: True)
-
-    manifest = _manifest("0.2.8", [("game.dat", data)])
-    save_local_manifest(manifest)
-    provider = MockProvider(manifest, {})
-    assert maybe_update(provider) is False
-    assert provider.downloads == []
-
-
-def test_maybe_update_applies_when_remote_newer(tmp_path, monkeypatch):
+def test_maybe_update_chains_packages(tmp_path, monkeypatch):
     install = tmp_path / "app"
     install.mkdir()
     f = install / "game.dat"
-    f.write_bytes(b"old")
+    f.write_bytes(b"v8")
     monkeypatch.setattr("src.updater.manager.install_dir", lambda: install)
     monkeypatch.setattr("src.updater.manager.is_frozen", lambda: True)
+    save_local_version("0.2.8", "win-x64")
 
-    local = _manifest("0.2.8", [("game.dat", b"old")])
-    save_local_manifest(local)
-    remote = _manifest("0.2.9", [("game.dat", b"new")])
-    provider = MockProvider(remote, {"game.dat": b"new"})
+    packages = [
+        UpdatePackageInfo("0.2.9", "win-x64", ("0.2.8",), "https://x/9", "v0.2.9"),
+        UpdatePackageInfo("0.2.10", "win-x64", ("0.2.9",), "https://x/10", "v0.2.10"),
+    ]
+    zips = {
+        "0.2.9": _make_zip("0.2.9", ["0.2.8"], {"game.dat": b"v9"}),
+        "0.2.10": _make_zip("0.2.10", ["0.2.9"], {"game.dat": b"v10"}),
+    }
+    provider = MockProvider(packages, zips)
     assert maybe_update(provider) is False
-    assert f.read_bytes() == b"new"
-
-
-def test_save_and_load_local_manifest(tmp_path, monkeypatch):
-    install = tmp_path / "app"
-    install.mkdir()
-    monkeypatch.setattr("src.updater.manager.install_dir", lambda: install)
-    data = {"version": "0.2.8", "files": []}
-    save_local_manifest(data)
-    loaded = load_local_manifest()
-    assert loaded == data
+    assert f.read_bytes() == b"v10"
+    assert len(provider.downloads) == 2

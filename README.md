@@ -38,8 +38,13 @@ tar xzf pepelny-sad-{version}-linux-x64.tar.gz
 | Minor / Major | PR с ручной правкой `VERSION` | 0.2.x → 0.3.0 или 1.0.0 |
 
 - Единый источник версии: файл [`VERSION`](VERSION)
-- При каждом merge в `main` workflow [`release.yml`](.github/workflows/release.yml) собирает PyInstaller **onedir**, публикует GitHub Release `vX.Y.Z` и коммитит bump с `[skip ci]`
-- Установленная игра (frozen build) при старте тихо проверяет обновления через manifest на GitHub Releases; скачиваются только изменённые файлы
+- При каждом merge в `main` workflow [`release.yml`](.github/workflows/release.yml) публикует GitHub Release `vX.Y.Z` с **4 файлами**:
+  - `pepelny-sad-{version}-win-x64-setup.exe`
+  - `pepelny-sad-{version}-linux-x64.tar.gz`
+  - `pepelny-sad-update-{0-2-12}-win-x64.zip`
+  - `pepelny-sad-update-{0-2-12}-linux-x64.zip`
+- Update-архив содержит `update.json` с полем `applies_from` (с каких версий можно поставить) и изменённые файлы
+- Установленная игра при старте тихо качает цепочку update-пакетов: если текущая версия не подходит под последний апдейт, берёт ближайший подходящий и идёт шаг за шагом до актуальной
 
 Переменные окружения updater (опционально): `PEPELNY_UPDATE_REPO`, `PEPELNY_UPDATE_PROVIDER`, `PEPELNY_UPDATE_BASE_URL` (для будущего CDN).
 
@@ -51,7 +56,7 @@ python tools/prepare_audio.py
 python tools/build_release.py
 ```
 
-Результат: `dist/pepelny-sad-{win-x64|linux-x64}/`, `dist/manifest-{platform}.json`.
+Результат: `dist/pepelny-sad-{win-x64|linux-x64}/`, update-zip через `python tools/build_update_package.py dist/pepelny-sad-win-x64 -o dist/pepelny-sad-update-0-2-9-win-x64.zip`.
 
 Windows installer (Inno Setup 6):
 
