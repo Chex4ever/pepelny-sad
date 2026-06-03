@@ -21,3 +21,13 @@ def test_sha256_file(tmp_path):
     f = tmp_path / "data.bin"
     f.write_bytes(b"hello")
     assert sha256_file(f) == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+
+
+def test_pepelny_sad_spec_paths_point_at_repo_root():
+    repo = Path(__file__).resolve().parents[2]
+    spec_dir = repo / "tools"
+    root = spec_dir.parent
+    assert root == repo
+    assert (root / "main.py").is_file()
+    assert (root / "assets").is_dir()
+    assert (root / "src" / "data").is_dir()

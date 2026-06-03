@@ -17,6 +17,10 @@ from tools.release_utils import detect_platform_id
 
 
 def build(skip_audio: bool = False) -> Path:
+    entrypoint = ROOT / "main.py"
+    if not entrypoint.is_file():
+        raise FileNotFoundError(f"Release entrypoint missing: {entrypoint}")
+
     if not skip_audio:
         subprocess.run([sys.executable, str(ROOT / "tools" / "prepare_audio.py")], check=True, cwd=ROOT)
 
