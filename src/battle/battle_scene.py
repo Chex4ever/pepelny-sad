@@ -19,7 +19,6 @@ from src.constants import (
 )
 from src.data.art_loader import load_enemies, load_items
 from src.render.screen_buffer import ScreenBuffer
-from src.ui.examine_panel import ExaminePanel
 from src.world.companions import spawn_companion
 from src.world.dungeon_reskin import bullet_speed_mult
 
@@ -35,7 +34,7 @@ class BattleScene:
 
     MENU = ["Fight", "Act", "Item", "Mercy"]
 
-    def __init__(self, enemy_id: str, profile, world_state, on_done, audio=None):
+    def __init__(self, enemy_id: str, profile, world_state, on_done, audio=None, examine=None):
         self.enemy_id = enemy_id
         self.enemies = load_enemies()
         self.enemy = dict(self.enemies[enemy_id])
@@ -52,7 +51,9 @@ class BattleScene:
         self.scan_flags: set = set()
         self.log: list[str] = []
         self.result = None  # win kill, spare, lose
-        self.examine = ExaminePanel()
+        from src.ui.windows.examine_window import ExamineWindow
+
+        self.examine = examine if examine is not None else ExamineWindow()
         self.combat = profile.combat_profile()
         self.pattern_idx = 0
         self.pattern: BulletPattern | None = None
@@ -318,4 +319,3 @@ class BattleScene:
             buf.draw_text(30, 24, msg, fg=COLOR_HIGHLIGHT)
             buf.draw_text(30, 26, "Enter — продолжить", fg=COLOR_TEXT)
 
-        self.examine.draw(buf)

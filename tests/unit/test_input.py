@@ -1,7 +1,7 @@
 """Tests for input handling."""
 import pygame
 
-from src.input import InputState, SCAN_D, SCAN_W
+from src.input import InputState, SCAN_D, SCAN_RETURN, SCAN_W
 
 
 def test_key_press_and_release():
@@ -65,3 +65,34 @@ def test_sync_keyboard_after_keydown():
     inp.sync_keyboard()
     inp.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_r))
     assert inp.pressed(pygame.K_r)
+
+
+def test_sync_populates_scancode_pressed(monkeypatch):
+    """pygame-ce get_pressed() is scancode-indexed; sync must fill scancodes_pressed."""
+    import pygame.key as pgkey
+
+    class _ScanView:
+        __slots__ = ("active",)
+
+        def __init__(self, active=frozenset()):
+            self.active = active
+
+        def __len__(self):
+            return 512
+
+        def __getitem__(self, sc):
+            return sc in self.active
+
+    held = _ScanView({SCAN_W, SCAN_RETURN})
+    pressed = _ScanView({SCAN_W, SCAN_RETURN})
+    released = _ScanView()
+
+    monkeypatch.setattr(pgkey, "get_pressed", lambda: held, raising=False)
+    monkeypatch.setattr(pgkey, "get_just_pressed", lambda: pressed, raising=False)
+    monkeypatch.setattr(pgkey, "get_just_released", lambda: released, raising=False)
+
+    inp = InputState()
+    inp.sync_keyboard()
+    assert inp.dir_key() == (0, -1)
+    assert inp.action_pressed()
+    assert not inp.pressed(pygame.K_w)

@@ -102,6 +102,9 @@ class FakeInput:
     def __init__(self, pressed: set | None = None, held: set | None = None):
         self._pressed = pressed or set()
         self._held = held or set()
+        self.mouse_down: set[int] = set()
+        self.mouse_pressed: set[int] = set()
+        self.mouse_released: set[int] = set()
 
     def begin_frame(self):
         pass
@@ -179,12 +182,30 @@ class FakeInput:
         return self.nav_right_pressed()
 
     def mouse_left_clicked(self) -> bool:
+        return 1 in self.mouse_pressed
+
+    def mouse_left_down(self) -> bool:
+        return 1 in self.mouse_pressed
+
+    def mouse_left_held(self) -> bool:
+        return 1 in self.mouse_down
+
+    def mouse_left_released(self) -> bool:
+        return 1 in self.mouse_released
+
+    def mouse_dragging(self, threshold: int = 4) -> bool:
         return False
+
+    def mouse_on_map(self, map_origin_y: int = 0) -> bool:
+        return False
+
+    def mouse_delta(self) -> tuple[int, int]:
+        return (0, 0)
 
     def mouse_grid(self, char_w=16, char_h=16) -> tuple[int, int]:
         return (0, 0)
 
-    def mouse_world(self, camera_x: int, camera_y: int, map_origin_y: int = 1):
+    def mouse_world(self, camera, camera_y=None, map_origin_y=None):
         return None
 
     def handle_event(self, event):
