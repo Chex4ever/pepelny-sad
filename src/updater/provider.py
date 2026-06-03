@@ -3,14 +3,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+
+from src.updater.update_package import UpdatePackageInfo
 
 
 class UpdateProvider(ABC):
     @abstractmethod
-    def fetch_manifest(self) -> dict[str, Any]:
+    def list_update_packages(self) -> list[UpdatePackageInfo]:
         ...
 
     @abstractmethod
-    def download_file(self, url: str, destination: Path) -> None:
+    def download_bytes(self, url: str) -> bytes:
         ...

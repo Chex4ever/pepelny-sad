@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -12,8 +13,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.build_manifest import build_manifest
+from src.version import read_version_file
 from tools.release_utils import detect_platform_id
+
+
+def install_manifest(platform_id: str, version: str) -> dict:
+    return {"version": version, "platform": platform_id}
 
 
 def build(skip_audio: bool = False) -> Path:
@@ -31,18 +36,14 @@ def build(skip_audio: bool = False) -> Path:
     )
 
     platform_id = detect_platform_id()
+    version = read_version_file()
     built = ROOT / "dist" / "pepelny-sad"
     target = ROOT / "dist" / f"pepelny-sad-{platform_id}"
     if target.exists():
         shutil.rmtree(target)
     built.rename(target)
 
-    manifest = build_manifest(target, platform_id)
-    manifest_path = ROOT / "dist" / f"manifest-{platform_id}.json"
-    import json
-
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-
+    manifest = install_manifest(platform_id, version)
     pepelny_meta = target / ".pepelny"
     pepelny_meta.mkdir(exist_ok=True)
     (pepelny_meta / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

@@ -1,13 +1,13 @@
-"""Fetch updates from GitHub Releases."""
+"""Fetch update packages from GitHub Releases."""
 from __future__ import annotations
 
 import json
 import urllib.error
 import urllib.request
-from pathlib import Path
 from typing import Any
 
 from src.updater.provider import UpdateProvider
+from src.updater.update_package import UpdatePackageInfo, parse_update_package_filename, previous_patch_version
 
 
 class GitHubReleasesProvider(UpdateProvider):
@@ -15,26 +15,50 @@ class GitHubReleasesProvider(UpdateProvider):
         self.repo = repo
         self.platform_id = platform_id
 
-    def _api_url(self) -> str:
-        return f"https://api.github.com/repos/{self.repo}/releases/latest"
+    def _releases_url(self, page: int = 1) -> str:
+        return f"https://api.github.com/repos/{self.repo}/releases?per_page=100&page={page}"
 
-    def fetch_manifest(self) -> dict[str, Any]:
+    def _request_json(self, url: str) -> Any:
         req = urllib.request.Request(
-            self._api_url(),
+            url,
             headers={"Accept": "application/vnd.github+json", "User-Agent": "pepelny-sad-updater"},
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
-            release = json.loads(resp.read().decode("utf-8"))
-        manifest_name = f"manifest-{self.platform_id}.json"
-        for asset in release.get("assets", []):
-            if asset.get("name") == manifest_name:
-                with urllib.request.urlopen(asset["browser_download_url"], timeout=60) as resp:
-                    return json.loads(resp.read().decode("utf-8"))
-        raise FileNotFoundError(f"Release asset not found: {manifest_name}")
+            return json.loads(resp.read().decode("utf-8"))
 
-    def download_file(self, url: str, destination: Path) -> None:
-        destination.parent.mkdir(parents=True, exist_ok=True)
+    def list_update_packages(self) -> list[UpdatePackageInfo]:
+        packages: list[UpdatePackageInfo] = []
+        page = 1
+        while True:
+            releases = self._request_json(self._releases_url(page))
+            if not releases:
+                break
+            for release in releases:
+                tag = release.get("tag_name", "")
+                for asset in release.get("assets", []):
+                    name = asset.get("name", "")
+                    to_version = parse_update_package_filename(name, self.platform_id)
+                    if not to_version:
+                        continue
+                    try:
+                        applies = (previous_patch_version(to_version),)
+                    except ValueError:
+                        applies = ()
+                    packages.append(
+                        UpdatePackageInfo(
+                            to_version=to_version,
+                            platform_id=self.platform_id,
+                            applies_from=applies,
+                            download_url=asset["browser_download_url"],
+                            release_tag=tag,
+                        )
+                    )
+            if len(releases) < 100:
+                break
+            page += 1
+        return packages
+
+    def download_bytes(self, url: str) -> bytes:
         req = urllib.request.Request(url, headers={"User-Agent": "pepelny-sad-updater"})
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = resp.read()
-        destination.write_bytes(data)
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            return resp.read()

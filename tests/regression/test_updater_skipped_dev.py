@@ -11,8 +11,11 @@ def test_updater_skipped_when_not_frozen(monkeypatch):
     monkeypatch.setattr("src.updater.manager.is_frozen", lambda: False)
 
     class FailProvider:
-        def fetch_manifest(self):
+        def list_update_packages(self):
             raise AssertionError("must not fetch when not frozen")
+
+        def download_bytes(self, url):
+            raise AssertionError("must not download when not frozen")
 
     assert maybe_update(FailProvider()) is False
 

@@ -82,12 +82,30 @@ jobs:
           choco install innosetup -y
           $version = (Get-Content VERSION).Trim()
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$version tools/installer/pepelny_sad.iss
+      - name: Build update package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content VERSION).Trim()
+          $parts = $version.Split('.')
+          $patch = [int]$parts[2]
+          $dashed = $version.Replace('.', '-')
+          $out = "dist/pepelny-sad-update-$dashed-win-x64.zip"
+          $prevArg = @()
+          if ($patch -gt 0) {
+            $prev = "$($parts[0]).$($parts[1]).$($patch - 1)"
+            $prevDashed = $prev.Replace('.', '-')
+            New-Item -ItemType Directory -Force -Path dist/prev | Out-Null
+            gh release download "v$prev" --pattern "pepelny-sad-update-$prevDashed-win-x64.zip" --dir dist/prev 2>$null
+            $prevZip = Get-ChildItem dist/prev -Filter *.zip -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($prevZip) { $prevArg = @("--prev-zip", $prevZip.FullName) }
+          }
+          python tools/build_update_package.py dist/pepelny-sad-win-x64 -o $out @prevArg
       - name: Collect release assets
         run: |
           mkdir dist/upload
-          python tools/collect_release_assets.py dist/manifest-win-x64.json dist/pepelny-sad-win-x64 dist/upload
-          copy dist/manifest-win-x64.json dist/upload/
           copy dist/pepelny-sad-$((Get-Content VERSION).Trim())-win-x64-setup.exe dist/upload/
+          copy dist/pepelny-sad-update-$((Get-Content VERSION).Trim().Replace('.','-'))-win-x64.zip dist/upload/
       - uses: actions/upload-artifact@v4
         with:
           name: win-release
@@ -116,12 +134,31 @@ jobs:
           VERSION=$(tr -d '\r\n' < VERSION)
           cp tools/installer/install.sh dist/
           tar -czf "dist/pepelny-sad-${VERSION}-linux-x64.tar.gz" -C dist install.sh pepelny-sad-linux-x64
+      - name: Build update package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(tr -d '\r\n' < VERSION)
+          DASHED="${VERSION//./-}"
+          OUT="dist/pepelny-sad-update-${DASHED}-linux-x64.zip"
+          IFS=. read -r MA MI PA <<< "$VERSION"
+          PREV_ARG=""
+          if [ "$PA" -gt 0 ]; then
+            PREV="${MA}.${MI}.$((PA - 1))"
+            PREV_DASHED="${PREV//./-}"
+            mkdir -p dist/prev
+            gh release download "v${PREV}" --pattern "pepelny-sad-update-${PREV_DASHED}-linux-x64.zip" --dir dist/prev || true
+            PREV_ZIP=$(ls dist/prev/*.zip 2>/dev/null | head -1 || true)
+            if [ -n "$PREV_ZIP" ]; then
+              PREV_ARG="--prev-zip ${PREV_ZIP}"
+            fi
+          fi
+          python tools/build_update_package.py dist/pepelny-sad-linux-x64 -o "$OUT" $PREV_ARG
       - name: Collect release assets
         run: |
           mkdir -p dist/upload
-          python tools/collect_release_assets.py dist/manifest-linux-x64.json dist/pepelny-sad-linux-x64 dist/upload
-          cp dist/manifest-linux-x64.json dist/upload/
           cp dist/pepelny-sad-$(tr -d '\r\n' < VERSION)-linux-x64.tar.gz dist/upload/
+          cp dist/pepelny-sad-update-$(tr -d '\r\n' < VERSION | tr '.' '-')-linux-x64.zip dist/upload/
       - uses: actions/upload-artifact@v4
         with:
           name: linux-release
@@ -147,8 +184,8 @@ jobs:
       - name: Merge release files
         run: |
           mkdir -p release/all
-          cp release/win/* release/all/ || true
-          cp release/linux/* release/all/ || true
+          cp release/win/* release/all/
+          cp release/linux/* release/all/
           ls -la release/all
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
