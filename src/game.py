@@ -6,6 +6,9 @@ import random
 
 import pygame
 
+from src.audio.ambient_controller import AmbientController
+from src.audio.audio_manager import AudioManager
+from src.audio.music_controller import MusicController
 from src.battle.battle_scene import BattleScene
 from src.constants import CELL_H, CELL_W, FPS, SCREEN_H, SCREEN_W, init_paths
 from src.data.art_init import ensure_art_files
@@ -60,17 +63,11 @@ class Game:
         self._fade_overlay = pygame.Surface(
             (SCREEN_W * CELL_W, SCREEN_H * CELL_H), pygame.SRCALPHA
         )
-        self._try_load_music(base)
-
-    def _try_load_music(self, base):
-        try:
-            pygame.mixer.init()
-            surf = os.path.join(base, "assets", "surface.ogg")
-            if os.path.isfile(surf):
-                pygame.mixer.music.load(surf)
-                pygame.mixer.music.play(-1)
-        except pygame.error:
-            pass
+        self.audio = AudioManager()
+        self.audio.init(base)
+        self.ambient = AmbientController(self.audio)
+        self.music = MusicController(self.audio)
+        self.music.on_scene(self.scene)
 
     def request_scene(self, action: str):
         self._pending_action = action
@@ -89,6 +86,8 @@ class Game:
             self.world_state.layer = "surface"
             self.overworld.player.x, self.overworld.player.y = 80, 24
             self.overworld.log.add("Выход на поверхность.")
+        if self.overworld:
+            self.music.on_layer(self.world_state.layer)
 
     def serialize_state(self) -> dict:
         inv = [(s.item_id, s.count) for s in self.profile.inventory.slots]
@@ -158,6 +157,10 @@ class Game:
             if target_scene == "intro":
                 self.intro.reset()
             self._apply_pending_action()
+            self.music.on_scene(self.scene)
+            if self.overworld:
+                self.music.on_layer(self.world_state.layer)
+                self.music.on_weather(self.overworld.weather.active)
 
         self.transition.start("out", pending_scene=target_scene, callback=midpoint)
 
@@ -205,6 +208,7 @@ class Game:
                 continue
 
             self.transition.update(dt_ms)
+            self.audio.update(dt_ms)
 
             if self.input.pressed(pygame.K_F1) and self.scene != "title":
                 self.help.toggle()
@@ -213,12 +217,17 @@ class Game:
                     self.help.close()
                 elif self.pause.open:
                     self.pause.close()
+                    self.audio.resume_music()
                 elif self.examine_open():
                     self._close_examine()
                 elif self.scene == "title":
                     self.running = False
                 elif self.scene in ("overworld", "battle"):
                     self.pause.toggle()
+                    if self.pause.open:
+                        self.audio.pause_music()
+                    else:
+                        self.audio.resume_music()
 
             pause_action = self.pause.handle_input(self.input)
             if pause_action:
@@ -233,13 +242,17 @@ class Game:
                 self.intro.draw(self.buffer)
             elif self.scene == "overworld" and self.overworld:
                 self.overworld.update()
+                self.music.on_weather(self.overworld.weather.active)
+                self.music.on_turn(self.world_state.turn_count)
                 if not self.pause.open and not self.help.open:
                     self.overworld.handle_input(self.input)
                     self._apply_pending_action()
                 nb = self.overworld.needs_battle
                 if nb:
                     self.enemy_id_boss = nb == "warden" and self.world_state.layer == "dungeon"
-                    self.battle = BattleScene(nb, self.profile, self.world_state, self._on_battle_done)
+                    self.battle = BattleScene(
+                        nb, self.profile, self.world_state, self._on_battle_done, self.audio
+                    )
                     self._start_transition("battle")
                 else:
                     self.overworld.draw(self.buffer, self.input)
@@ -283,6 +296,7 @@ class Game:
 
     def _update_title(self):
         if self.input.confirm_pressed():
+            self.audio.play_sfx("ui_confirm")
             self.new_game(self.title_seed)
         if self.input.pressed(pygame.K_r):
             self.title_seed = random.randint(1, 99999)
@@ -291,6 +305,8 @@ class Game:
             if data:
                 self.restore_state(data)
                 self.scene = "overworld"
+                self.music.on_scene("overworld")
+                self.music.on_layer(self.world_state.layer)
 
     def _draw_title(self):
         elapsed = pygame.time.get_ticks() - self.title_start_ms

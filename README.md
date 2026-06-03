@@ -53,6 +53,24 @@ python -m pytest --cov=src --cov-report=term-missing
 
 `>` вход в подземелье, `<` выход, `T` дерево, `l`/`i` факел, `$` лут, `&` Кузня, `~` станок, `o`/`+` ресурсы, `!` бой, `@` сюжетный NPC, `=` дорога.
 
+## Audio
+
+Звуки и музыка лежат в `assets/audio/` (см. `manifest.json` и `LICENSES.md`).
+
+**Подготовка ассетов** (Kenney CC0 + процедурные fallback):
+
+```bash
+python tools/prepare_audio.py
+# или
+powershell tools/fetch_audio.ps1
+```
+
+С `ffmpeg` в PATH WAV конвертируются в OGG; без ffmpeg используются WAV (pygame поддерживает оба).
+
+- **Шаги** — по поверхности (трава/грязь/гравий/камень/дорога), случайный клип, pitch-варианты, cooldown 120 ms
+- **Окружение** — ветер, пепельный шторм, факелы (по дистанции в FOV), пещера + капли
+- **Музыка** — crossfade по сцене/слою/погоде/ночи; пауза при Esc-меню
+
 ## Референсы
 
 Undertale (бой/Mercy), COGMIND (ASCII UI, осмотр), Minecraft (чанки), Diablo (экипировка, сегменты), No Man's Sky (слоты), Terraria (крафт).

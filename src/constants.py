@@ -40,9 +40,11 @@ COLOR_DUNGEON_WALL = (40, 40, 50)
 COLOR_SURFACE_SKY = (30, 35, 55)
 
 DATA_DIR = None  # set at runtime
+AUDIO_DIR = None  # set at runtime
 
 
 def init_paths(base_path):
-    global DATA_DIR
+    global DATA_DIR, AUDIO_DIR
     import os
     DATA_DIR = os.path.join(base_path, "src", "data")
+    AUDIO_DIR = os.path.join(base_path, "assets", "audio")
