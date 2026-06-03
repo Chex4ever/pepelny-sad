@@ -117,9 +117,27 @@ class ScreenBuffer:
             else:
                 self.set(px, y, ch, fg=fg, bg=bg if bg else (10, 10, 20), light=light, fg_a=fg_a)
 
+    def fill_rect(
+        self,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        ch: str = " ",
+        fg=(200, 200, 200),
+        bg=(16, 16, 28),
+        light: float = 1.0,
+        fg_a: int = 255,
+        bg_a: int = 255,
+    ):
+        for dy in range(h):
+            for dx in range(w):
+                self.set(x + dx, y + dy, ch, fg=fg, bg=bg, light=light, fg_a=fg_a, bg_a=bg_a)
+
     def draw_box(self, x: int, y: int, w: int, h: int, title: str = "", fg=(100, 140, 180), bg=(16, 16, 28)):
         if w < 2 or h < 2:
             return
+        self.fill_rect(x + 1, y + 1, w - 2, h - 2, fg=fg, bg=bg)
         corners = ["┌", "┐", "└", "┘"]
         for ix in range(w):
             top = corners[0] if ix == 0 else corners[1] if ix == w - 1 else "─"
