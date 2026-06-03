@@ -28,8 +28,9 @@ alwaysApply: true
 5. `git push -u origin feature/my-task`
 6. **Pull Request** в `main` через `gh pr create` — **сразу после push**, не спрашивать
 7. **Self-review**: пройти diff, чеклист ниже, поправить замечания в той же ветке, допушить
-8. CI/тесты зелёные → `gh pr merge` (squash или merge commit — по задаче)
-9. Удалить feature-ветку локально и на remote
+8. **Дождаться зелёного CI** на PR (`.github/workflows/ci.yml`) — merge в `main` только после успешных проверок
+9. CI/тесты зелёные → `gh pr merge` (squash или merge commit — по задаче)
+10. Удалить feature-ветку локально и на remote
 
 ## Агент Cursor
 

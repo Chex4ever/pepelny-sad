@@ -1,0 +1,180 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  version:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bump patch or keep manual VERSION
+        id: meta
+        run: |
+          if git diff HEAD~1 HEAD -- VERSION | grep -q .; then
+            echo "VERSION changed in merge — skip auto patch bump"
+          else
+            python tools/bump_version.py patch
+          fi
+          echo "version=$(tr -d '\r\n' < VERSION)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: version-file
+          path: VERSION
+
+  test:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-file
+          path: .
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          python tools/prepare_audio.py
+          python -m pytest tests/ -q
+
+  build-windows:
+    needs: [version, test]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-file
+          path: .
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build
+        run: |
+          pip install -r requirements.txt -r requirements-build.txt
+          python tools/prepare_audio.py
+          python tools/build_release.py --skip-audio
+      - name: Inno Setup installer
+        run: |
+          choco install innosetup -y
+          $version = (Get-Content VERSION).Trim()
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$version tools/installer/pepelny_sad.iss
+      - name: Collect release assets
+        run: |
+          mkdir dist/upload
+          python tools/collect_release_assets.py dist/manifest-win-x64.json dist/pepelny-sad-win-x64 dist/upload
+          copy dist/manifest-win-x64.json dist/upload/
+          copy dist/pepelny-sad-$((Get-Content VERSION).Trim())-win-x64-setup.exe dist/upload/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-release
+          path: dist/upload/
+
+  build-linux:
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-file
+          path: .
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build
+        run: |
+          pip install -r requirements.txt -r requirements-build.txt
+          python tools/prepare_audio.py
+          python tools/build_release.py --skip-audio
+      - name: Linux tarball
+        run: |
+          VERSION=$(tr -d '\r\n' < VERSION)
+          cp tools/installer/install.sh dist/
+          tar -czf "dist/pepelny-sad-${VERSION}-linux-x64.tar.gz" -C dist install.sh pepelny-sad-linux-x64
+      - name: Collect release assets
+        run: |
+          mkdir -p dist/upload
+          python tools/collect_release_assets.py dist/manifest-linux-x64.json dist/pepelny-sad-linux-x64 dist/upload
+          cp dist/manifest-linux-x64.json dist/upload/
+          cp dist/pepelny-sad-$(tr -d '\r\n' < VERSION)-linux-x64.tar.gz dist/upload/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: dist/upload/
+
+  publish:
+    needs: [version, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-file
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          name: win-release
+          path: release/win
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-release
+          path: release/linux
+      - name: Merge release files
+        run: |
+          mkdir -p release/all
+          cp release/win/* release/all/ || true
+          cp release/linux/* release/all/ || true
+          ls -la release/all
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: v${{ needs.version.outputs.version }}
+          generate_release_notes: true
+          files: release/all/*
+
+  commit-version:
+    needs: [version, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-file
+          path: .
+      - name: Push VERSION bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          if git diff --cached --quiet; then
+            echo "VERSION already synced"
+            exit 0
+          fi
+          git commit -m "chore: release v$(tr -d '\r\n' < VERSION) [skip ci]"
+          git push
