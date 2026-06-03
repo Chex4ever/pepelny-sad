@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import random
-import sys
 
 import pygame
 
@@ -15,10 +14,16 @@ from src.overworld.overworld_scene import OverworldScene
 from src.progression.player_profile import PlayerProfile
 from src.render.renderer import AsciiRenderer
 from src.render.screen_buffer import ScreenBuffer
+from src.render.transitions import TransitionManager
+from src.story.intro import IntroScene
 from src.story.narrative import ENDINGS, pick_ending
+from src.ui.help_panel import HelpPanel
+from src.ui.pause_menu import PauseMenu
 from src.ui.title_screen import TitleScreen
+from src.world.dungeon_stitcher import ensure_dungeon
 from src.world.world_map import WorldMap
 from src.world.world_state import WorldState
+from src.world.save import load_game, save_game
 
 
 class Game:
@@ -46,7 +51,15 @@ class Game:
         self.enemy_id_boss = False
         self.title_seed = self.world_state.world_seed
         self.title_screen = TitleScreen()
-        self.title_frame = 0
+        self.title_start_ms = pygame.time.get_ticks()
+        self.intro = IntroScene()
+        self.pause = PauseMenu()
+        self.help = HelpPanel()
+        self.transition = TransitionManager()
+        self._pending_action: str | None = None
+        self._fade_overlay = pygame.Surface(
+            (SCREEN_W * CELL_W, SCREEN_H * CELL_H), pygame.SRCALPHA
+        )
         self._try_load_music(base)
 
     def _try_load_music(self, base):
@@ -58,6 +71,24 @@ class Game:
                 pygame.mixer.music.play(-1)
         except pygame.error:
             pass
+
+    def request_scene(self, action: str):
+        self._pending_action = action
+
+    def _apply_pending_action(self):
+        action = self._pending_action
+        self._pending_action = None
+        if not action or not self.overworld:
+            return
+        if action == "dungeon_enter":
+            self.world_state.layer = "dungeon"
+            ensure_dungeon(self.world_state, self.world_map)
+            self.overworld.player.x, self.overworld.player.y = 2, 2
+            self.overworld.log.add("Спуск в подземелье.")
+        elif action == "surface_exit":
+            self.world_state.layer = "surface"
+            self.overworld.player.x, self.overworld.player.y = 80, 24
+            self.overworld.log.add("Выход на поверхность.")
 
     def serialize_state(self) -> dict:
         inv = [(s.item_id, s.count) for s in self.profile.inventory.slots]
@@ -74,6 +105,7 @@ class Game:
             "dungeon_entered": self.world_state.dungeon_entered,
             "boss_cleared": self.world_state.boss_cleared,
             "defeated_battles": list(self.world_state.defeated_battles),
+            "dungeon_explored": list(self.world_map.dungeon_explored),
             "hp": self.profile.hp,
             "inventory": inv,
             "equipment": dict(self.profile.equipment.slots),
@@ -95,6 +127,7 @@ class Game:
         self.world_state.boss_cleared = data.get("boss_cleared", False)
         self.world_state.defeated_battles = set(tuple(x) for x in data.get("defeated_battles", []))
         self.world_map = WorldMap(self.world_state.world_seed)
+        self.world_map.dungeon_explored = set(tuple(x) for x in data.get("dungeon_explored", []))
         self.profile = PlayerProfile()
         self.profile.hp = data.get("hp", 20)
         for i, (iid, cnt) in enumerate(data.get("inventory", [])):
@@ -116,19 +149,44 @@ class Game:
         self.profile.inventory.add("root_fiber", 2, 20)
         self.world_map = WorldMap(self.world_state.world_seed)
         self.overworld = OverworldScene(self)
-        self.scene = "overworld"
+        self.intro.reset()
+        self._start_transition("intro")
+
+    def _start_transition(self, target_scene: str):
+        def midpoint():
+            self.scene = target_scene
+            if target_scene == "intro":
+                self.intro.reset()
+            self._apply_pending_action()
+
+        self.transition.start("out", pending_scene=target_scene, callback=midpoint)
 
     def _on_battle_done(self, result: str):
         if self.enemy_id_boss and result in ("kill", "spare"):
             self.world_state.boss_cleared = True
             self.ending_data = ENDINGS[pick_ending(self.world_state, result)]
-            self.scene = "ending"
+            self._start_transition("ending")
         else:
-            self.scene = "overworld"
+            self._start_transition("overworld")
         self.battle = None
+
+    def _handle_pause_action(self, action: str | None):
+        if action == "main_menu":
+            self._start_transition("title")
+            self.title_start_ms = pygame.time.get_ticks()
+        elif action == "save":
+            save_game(self.serialize_state())
+            if self.overworld:
+                self.overworld.log.add("Сохранено.")
+        elif action == "save_quit":
+            save_game(self.serialize_state())
+            self.running = False
+        elif action == "quit":
+            self.running = False
 
     def run(self):
         while self.running:
+            dt_ms = self.clock.tick(FPS)
             pygame.event.pump()
             self.input.begin_frame()
             for event in pygame.event.get():
@@ -137,35 +195,91 @@ class Game:
                 self.input.handle_event(event)
             self.input.sync_keyboard()
 
-            if self.input.pressed(pygame.K_ESCAPE) and self.scene == "title":
-                self.running = False
+            if self.transition.blocks_input():
+                self.transition.update(dt_ms)
+                if self.scene == "title":
+                    self._draw_title()
+                elif self.scene == "intro":
+                    self.intro.draw(self.buffer)
+                self._render_frame()
+                continue
+
+            self.transition.update(dt_ms)
+
+            if self.input.pressed(pygame.K_F1) and self.scene != "title":
+                self.help.toggle()
+            if self.input.pressed(pygame.K_ESCAPE):
+                if self.help.open:
+                    self.help.close()
+                elif self.pause.open:
+                    self.pause.close()
+                elif self.examine_open():
+                    self._close_examine()
+                elif self.scene == "title":
+                    self.running = False
+                elif self.scene in ("overworld", "battle"):
+                    self.pause.toggle()
+
+            pause_action = self.pause.handle_input(self.input)
+            if pause_action:
+                self._handle_pause_action(pause_action)
 
             if self.scene == "title":
-                self.title_frame += 1
                 self._update_title()
                 self._draw_title()
+            elif self.scene == "intro":
+                if self.intro.handle_input(self.input):
+                    self._start_transition("overworld")
+                self.intro.draw(self.buffer)
             elif self.scene == "overworld" and self.overworld:
                 self.overworld.update()
-                self.overworld.handle_input(self.input)
+                if not self.pause.open and not self.help.open:
+                    self.overworld.handle_input(self.input)
+                    self._apply_pending_action()
                 nb = self.overworld.needs_battle
                 if nb:
                     self.enemy_id_boss = nb == "warden" and self.world_state.layer == "dungeon"
                     self.battle = BattleScene(nb, self.profile, self.world_state, self._on_battle_done)
-                    self.scene = "battle"
+                    self._start_transition("battle")
                 else:
-                    self.overworld.draw(self.buffer)
+                    self.overworld.draw(self.buffer, self.input)
             elif self.scene == "battle" and self.battle:
                 self.battle.update()
-                self.battle.handle_input(self.input)
+                if not self.pause.open and not self.help.open:
+                    self.battle.handle_input(self.input)
                 self.battle.draw(self.buffer)
             elif self.scene == "ending":
                 self._draw_ending()
                 if self.input.confirm_pressed():
-                    self.scene = "title"
+                    self._start_transition("title")
+                    self.title_start_ms = pygame.time.get_ticks()
 
-            self.renderer.draw(self.buffer)
-            self.clock.tick(FPS)
+            self._render_frame()
+
         pygame.quit()
+
+    def examine_open(self) -> bool:
+        if self.overworld and self.overworld.examine.open:
+            return True
+        if self.battle and self.battle.examine.open:
+            return True
+        return False
+
+    def _close_examine(self):
+        if self.overworld:
+            self.overworld.examine.close()
+        if self.battle:
+            self.battle.examine.close()
+
+    def _render_frame(self):
+        self.pause.draw(self.buffer)
+        self.help.draw(self.buffer)
+        self.renderer.draw(self.buffer)
+        alpha = self.transition.alpha()
+        if alpha > 0:
+            self._fade_overlay.fill((0, 0, 0, alpha))
+            self.screen.blit(self._fade_overlay, (0, 0))
+            pygame.display.flip()
 
     def _update_title(self):
         if self.input.confirm_pressed():
@@ -173,20 +287,14 @@ class Game:
         if self.input.pressed(pygame.K_r):
             self.title_seed = random.randint(1, 99999)
         if self.input.pressed(pygame.K_l):
-            from src.world.save import load_game
-
             data = load_game()
             if data:
                 self.restore_state(data)
                 self.scene = "overworld"
 
     def _draw_title(self):
-        self.title_screen.draw(
-            self.buffer,
-            seed=self.title_seed,
-            frame=self.title_frame,
-            title_seed=self.title_seed,
-        )
+        elapsed = pygame.time.get_ticks() - self.title_start_ms
+        self.title_screen.draw(self.buffer, seed=self.title_seed, elapsed_ms=elapsed, title_seed=self.title_seed)
 
     def _draw_ending(self):
         from src.constants import COLOR_HIGHLIGHT, COLOR_TEXT

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pygame
 
+from src.constants import CELL_H, CELL_W
+
 
 class InputState:
     def __init__(self):
@@ -37,7 +39,7 @@ class InputState:
                 self.keys_down.add(key)
                 self.keys_pressed.add(key)
             if event.key == pygame.K_ESCAPE:
-                self.quit = False  # handled by scenes
+                self.quit = False
         elif event.type == pygame.KEYUP:
             key = event.key
             if key == pygame.K_UNKNOWN:
@@ -54,7 +56,6 @@ class InputState:
             pygame.event.clear(pygame.KEYDOWN)
 
     def sync_keyboard(self):
-        """Edge-detect via get_pressed(); works when KEYDOWN events are dropped."""
         current = pygame.key.get_pressed()
         if self._prev_keys is None:
             self._prev_keys = current
@@ -67,6 +68,24 @@ class InputState:
                 self.keys_down.discard(key)
         self._prev_keys = current
 
+    def mouse_grid(self, char_w=CELL_W, char_h=CELL_H) -> tuple[int, int]:
+        x, y = self.mouse_pos
+        return x // char_w, y // char_h
+
+    def mouse_world(self, camera_x: int, camera_y: int, map_origin_y: int = 1) -> tuple[int, int] | None:
+        gx, gy = self.mouse_grid()
+        from src.constants import MAP_VIEW_W, MAP_VIEW_H
+
+        if gx < 0 or gx >= MAP_VIEW_W:
+            return None
+        local_y = gy - map_origin_y
+        if local_y < 0 or local_y >= MAP_VIEW_H:
+            return None
+        return camera_x + gx, camera_y + local_y
+
+    def mouse_left_clicked(self) -> bool:
+        return 1 in self.mouse_pressed
+
     def pressed(self, key) -> bool:
         return key in self.keys_pressed
 
@@ -76,8 +95,10 @@ class InputState:
     def any_pressed(self, *keys) -> bool:
         return any(k in self.keys_pressed for k in keys)
 
+    def any_key_pressed(self) -> bool:
+        return bool(self.keys_pressed)
+
     def confirm_pressed(self) -> bool:
-        """Enter / Space / numpad Enter / mouse click."""
         return self.action_pressed() or bool(self.mouse_pressed)
 
     def action_pressed(self) -> bool:
