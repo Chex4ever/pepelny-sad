@@ -1,15 +1,64 @@
 # Пепельный Сад
 
+[![CI](https://github.com/Chex4ever/pepelny-sad/actions/workflows/ci.yml/badge.svg)](https://github.com/Chex4ever/pepelny-sad/actions/workflows/ci.yml)
+
 Демо-игра на Pygame в духе Undertale × COGMIND × Terraria: исследование чанкового мира, Soul Scan в боях, крафт и ASCII-портреты.
 
+Текущая версия: **0.2.8** (см. файл [`VERSION`](VERSION)).
+
 ## Установка
+
+### Из исходников (разработка)
 
 ```bash
 pip install -r requirements.txt
 python main.py
 ```
 
-Python 3.11+, Pygame 2.5+.
+Python 3.11+, Pygame 2.5+. Для CI и сборки релизов используется Python **3.12**.
+
+### Windows x64
+
+Скачайте `pepelny-sad-{version}-win-x64-setup.exe` из [Releases](https://github.com/Chex4ever/pepelny-sad/releases) и запустите установщик. Игра ставится в `%ProgramFiles%\Пепельный Сад\`.
+
+### Linux x64
+
+```bash
+tar xzf pepelny-sad-{version}-linux-x64.tar.gz
+./install.sh --yes
+```
+
+По умолчанию: `~/.local/share/pepelny-sad/`, ярлык в `~/.local/share/applications/`, команда `pepelny-sad` в `~/.local/bin/`.
+
+## Версии и релизы
+
+| Событие | Кто | Пример |
+|---------|-----|--------|
+| Merge в `main` | GitHub Actions (auto patch) | 0.2.8 → 0.2.9 |
+| Minor / Major | PR с ручной правкой `VERSION` | 0.2.x → 0.3.0 или 1.0.0 |
+
+- Единый источник версии: файл [`VERSION`](VERSION)
+- При каждом merge в `main` workflow [`release.yml`](.github/workflows/release.yml) собирает PyInstaller **onedir**, публикует GitHub Release `vX.Y.Z` и коммитит bump с `[skip ci]`
+- Установленная игра (frozen build) при старте тихо проверяет обновления через manifest на GitHub Releases; скачиваются только изменённые файлы
+
+Переменные окружения updater (опционально): `PEPELNY_UPDATE_REPO`, `PEPELNY_UPDATE_PROVIDER`, `PEPELNY_UPDATE_BASE_URL` (для будущего CDN).
+
+## Сборка релиза локально
+
+```bash
+pip install -r requirements.txt -r requirements-build.txt
+python tools/prepare_audio.py
+python tools/build_release.py
+```
+
+Результат: `dist/pepelny-sad-{win-x64|linux-x64}/`, `dist/manifest-{platform}.json`.
+
+Windows installer (Inno Setup 6):
+
+```powershell
+$v = (Get-Content VERSION).Trim()
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$v tools/installer/pepelny_sad.iss
+```
 
 ## Тесты
 
