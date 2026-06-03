@@ -9,7 +9,7 @@ htmlcov/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-save.pkl
+tools/_audio_staging/
 *.pkl
 .env
 .venv/

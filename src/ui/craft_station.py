@@ -52,7 +52,7 @@ class CraftStation:
                 buf.draw_text(x + 4, y + 16 + j, f"{nm} x{ing['count']}", fg=COLOR_TEXT)
         buf.draw_text(x + 2, y + h - 2, "Enter-крафт  O-осмотр  Esc", fg=COLOR_TEXT)
 
-    def handle_input(self, inp, profile, world_state, examine_panel, log) -> bool:
+    def handle_input(self, inp, profile, world_state, examine_panel, log, audio=None) -> bool:
         if not self.open:
             return False
         if inp.pressed(pygame.K_ESCAPE):
@@ -75,6 +75,8 @@ class CraftStation:
             result = craft(r["id"], profile.inventory, world_state.discovered_recipes, world_state.scan_flags)
             if result:
                 log.add(f"Скрафчено: {load_items().get(result, {}).get('name', result)}")
+                if audio:
+                    audio.play_sfx("craft")
             else:
                 log.add("Не хватает материалов.")
         return True

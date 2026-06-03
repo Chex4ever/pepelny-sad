@@ -1,0 +1,530 @@
+{
+  "version": 1,
+  "sounds": {
+    "footstep_grass_low_0": {
+      "file": "sfx/footsteps/grass/grass_low_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_low_1": {
+      "file": "sfx/footsteps/grass/grass_low_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_low_2": {
+      "file": "sfx/footsteps/grass/grass_low_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_mid_0": {
+      "file": "sfx/footsteps/grass/grass_mid_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_mid_1": {
+      "file": "sfx/footsteps/grass/grass_mid_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_mid_2": {
+      "file": "sfx/footsteps/grass/grass_mid_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_high_0": {
+      "file": "sfx/footsteps/grass/grass_high_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_high_1": {
+      "file": "sfx/footsteps/grass/grass_high_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass_high_2": {
+      "file": "sfx/footsteps/grass/grass_high_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_grass"
+    },
+    "footstep_grass": {
+      "group": [
+        "footstep_grass_low_0",
+        "footstep_grass_low_1",
+        "footstep_grass_low_2",
+        "footstep_grass_mid_0",
+        "footstep_grass_mid_1",
+        "footstep_grass_mid_2",
+        "footstep_grass_high_0",
+        "footstep_grass_high_1",
+        "footstep_grass_high_2"
+      ],
+      "volume": 0.55
+    },
+    "footstep_dirt_low_0": {
+      "file": "sfx/footsteps/dirt/dirt_low_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_low_1": {
+      "file": "sfx/footsteps/dirt/dirt_low_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_low_2": {
+      "file": "sfx/footsteps/dirt/dirt_low_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_mid_0": {
+      "file": "sfx/footsteps/dirt/dirt_mid_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_mid_1": {
+      "file": "sfx/footsteps/dirt/dirt_mid_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_mid_2": {
+      "file": "sfx/footsteps/dirt/dirt_mid_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_high_0": {
+      "file": "sfx/footsteps/dirt/dirt_high_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_high_1": {
+      "file": "sfx/footsteps/dirt/dirt_high_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt_high_2": {
+      "file": "sfx/footsteps/dirt/dirt_high_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_dirt"
+    },
+    "footstep_dirt": {
+      "group": [
+        "footstep_dirt_low_0",
+        "footstep_dirt_low_1",
+        "footstep_dirt_low_2",
+        "footstep_dirt_mid_0",
+        "footstep_dirt_mid_1",
+        "footstep_dirt_mid_2",
+        "footstep_dirt_high_0",
+        "footstep_dirt_high_1",
+        "footstep_dirt_high_2"
+      ],
+      "volume": 0.55
+    },
+    "footstep_gravel_low_0": {
+      "file": "sfx/footsteps/gravel/gravel_low_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_low_1": {
+      "file": "sfx/footsteps/gravel/gravel_low_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_low_2": {
+      "file": "sfx/footsteps/gravel/gravel_low_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_mid_0": {
+      "file": "sfx/footsteps/gravel/gravel_mid_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_mid_1": {
+      "file": "sfx/footsteps/gravel/gravel_mid_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_mid_2": {
+      "file": "sfx/footsteps/gravel/gravel_mid_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_high_0": {
+      "file": "sfx/footsteps/gravel/gravel_high_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_high_1": {
+      "file": "sfx/footsteps/gravel/gravel_high_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel_high_2": {
+      "file": "sfx/footsteps/gravel/gravel_high_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_gravel"
+    },
+    "footstep_gravel": {
+      "group": [
+        "footstep_gravel_low_0",
+        "footstep_gravel_low_1",
+        "footstep_gravel_low_2",
+        "footstep_gravel_mid_0",
+        "footstep_gravel_mid_1",
+        "footstep_gravel_mid_2",
+        "footstep_gravel_high_0",
+        "footstep_gravel_high_1",
+        "footstep_gravel_high_2"
+      ],
+      "volume": 0.55
+    },
+    "footstep_stone_low_0": {
+      "file": "sfx/footsteps/stone/stone_low_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_low_1": {
+      "file": "sfx/footsteps/stone/stone_low_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_low_2": {
+      "file": "sfx/footsteps/stone/stone_low_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_mid_0": {
+      "file": "sfx/footsteps/stone/stone_mid_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_mid_1": {
+      "file": "sfx/footsteps/stone/stone_mid_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_mid_2": {
+      "file": "sfx/footsteps/stone/stone_mid_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_high_0": {
+      "file": "sfx/footsteps/stone/stone_high_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_high_1": {
+      "file": "sfx/footsteps/stone/stone_high_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone_high_2": {
+      "file": "sfx/footsteps/stone/stone_high_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_stone"
+    },
+    "footstep_stone": {
+      "group": [
+        "footstep_stone_low_0",
+        "footstep_stone_low_1",
+        "footstep_stone_low_2",
+        "footstep_stone_mid_0",
+        "footstep_stone_mid_1",
+        "footstep_stone_mid_2",
+        "footstep_stone_high_0",
+        "footstep_stone_high_1",
+        "footstep_stone_high_2"
+      ],
+      "volume": 0.55
+    },
+    "footstep_road_low_0": {
+      "file": "sfx/footsteps/road/road_low_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_low_1": {
+      "file": "sfx/footsteps/road/road_low_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_low_2": {
+      "file": "sfx/footsteps/road/road_low_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_mid_0": {
+      "file": "sfx/footsteps/road/road_mid_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_mid_1": {
+      "file": "sfx/footsteps/road/road_mid_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_mid_2": {
+      "file": "sfx/footsteps/road/road_mid_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_high_0": {
+      "file": "sfx/footsteps/road/road_high_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_high_1": {
+      "file": "sfx/footsteps/road/road_high_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road_high_2": {
+      "file": "sfx/footsteps/road/road_high_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_road"
+    },
+    "footstep_road": {
+      "group": [
+        "footstep_road_low_0",
+        "footstep_road_low_1",
+        "footstep_road_low_2",
+        "footstep_road_mid_0",
+        "footstep_road_mid_1",
+        "footstep_road_mid_2",
+        "footstep_road_high_0",
+        "footstep_road_high_1",
+        "footstep_road_high_2"
+      ],
+      "volume": 0.55
+    },
+    "footstep_wood_low_0": {
+      "file": "sfx/footsteps/wood/wood_low_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_low_1": {
+      "file": "sfx/footsteps/wood/wood_low_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_low_2": {
+      "file": "sfx/footsteps/wood/wood_low_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_mid_0": {
+      "file": "sfx/footsteps/wood/wood_mid_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_mid_1": {
+      "file": "sfx/footsteps/wood/wood_mid_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_mid_2": {
+      "file": "sfx/footsteps/wood/wood_mid_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_high_0": {
+      "file": "sfx/footsteps/wood/wood_high_0.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_high_1": {
+      "file": "sfx/footsteps/wood/wood_high_1.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood_high_2": {
+      "file": "sfx/footsteps/wood/wood_high_2.wav",
+      "volume": 0.55,
+      "loop": false,
+      "group": "footstep_wood"
+    },
+    "footstep_wood": {
+      "group": [
+        "footstep_wood_low_0",
+        "footstep_wood_low_1",
+        "footstep_wood_low_2",
+        "footstep_wood_mid_0",
+        "footstep_wood_mid_1",
+        "footstep_wood_mid_2",
+        "footstep_wood_high_0",
+        "footstep_wood_high_1",
+        "footstep_wood_high_2"
+      ],
+      "volume": 0.55
+    },
+    "wind_soft": {
+      "file": "sfx/ambient/wind_soft.wav",
+      "volume": 0.35,
+      "loop": true
+    },
+    "wind_gust": {
+      "file": "sfx/ambient/wind_gust.wav",
+      "volume": 0.45,
+      "loop": true
+    },
+    "torch": {
+      "file": "sfx/ambient/torch.wav",
+      "volume": 0.4,
+      "loop": true
+    },
+    "cave": {
+      "file": "sfx/ambient/cave.wav",
+      "volume": 0.5,
+      "loop": true
+    },
+    "ember": {
+      "file": "sfx/ambient/ember.wav",
+      "volume": 0.25,
+      "loop": true
+    },
+    "drip": {
+      "file": "sfx/ambient/drip.wav",
+      "volume": 0.35,
+      "loop": false
+    },
+    "ui_confirm": {
+      "file": "sfx/ui/ui_confirm.ogg",
+      "volume": 0.6,
+      "loop": false
+    },
+    "ui_back": {
+      "file": "sfx/ui/ui_back.ogg",
+      "volume": 0.6,
+      "loop": false
+    },
+    "ui_examine": {
+      "file": "sfx/ui/ui_examine.ogg",
+      "volume": 0.6,
+      "loop": false
+    },
+    "pickup": {
+      "file": "sfx/game/pickup.ogg",
+      "volume": 0.65,
+      "loop": false
+    },
+    "craft": {
+      "file": "sfx/game/craft.ogg",
+      "volume": 0.65,
+      "loop": false
+    },
+    "stairs": {
+      "file": "sfx/game/stairs.ogg",
+      "volume": 0.65,
+      "loop": false
+    },
+    "battle_start": {
+      "file": "sfx/game/battle_start.ogg",
+      "volume": 0.65,
+      "loop": false
+    },
+    "hit": {
+      "file": "sfx/game/hit.ogg",
+      "volume": 0.65,
+      "loop": false
+    },
+    "dodge": {
+      "file": "sfx/game/dodge.ogg",
+      "volume": 0.65,
+      "loop": false
+    },
+    "music_title": {
+      "file": "music/music_title.wav",
+      "volume": 0.4,
+      "loop": true,
+      "music": true
+    },
+    "music_intro": {
+      "file": "music/music_intro.wav",
+      "volume": 0.35,
+      "loop": true,
+      "music": true
+    },
+    "music_surface_day": {
+      "file": "music/music_surface_day.wav",
+      "volume": 0.42,
+      "loop": true,
+      "music": true
+    },
+    "music_surface_night": {
+      "file": "music/music_surface_night.wav",
+      "volume": 0.38,
+      "loop": true,
+      "music": true
+    },
+    "music_pepel": {
+      "file": "music/music_pepel.wav",
+      "volume": 0.45,
+      "loop": true,
+      "music": true
+    },
+    "music_dungeon": {
+      "file": "music/music_dungeon.wav",
+      "volume": 0.5,
+      "loop": true,
+      "music": true
+    },
+    "music_battle": {
+      "file": "music/music_battle.wav",
+      "volume": 0.48,
+      "loop": true,
+      "music": true
+    }
+  }
+}

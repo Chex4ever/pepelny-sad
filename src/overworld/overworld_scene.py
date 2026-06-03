@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pygame
 
+from src.audio.tile_sounds import resolve_footstep
 from src.constants import MAP_VIEW_H, MAP_VIEW_W, SCREEN_H, SCREEN_W
 from src.overworld.fov import cast_los_fov
 from src.overworld.player import OverworldPlayer
@@ -83,6 +84,16 @@ class OverworldScene:
         for wx, wy in self.visible:
             wm.mark_explored(wx, wy, layer)
 
+        self.game.ambient.update(
+            layer=layer,
+            weather_active=self.weather.active,
+            in_shelter=self._in_shelter(),
+            visible=self.visible,
+            player_pos=(self.player.x, self.player.y),
+            turn_count=self.game.world_state.turn_count,
+            tile_ch=tile_ch,
+        )
+
     def _is_explored(self, wx: int, wy: int) -> bool:
         return self.game.world_map.is_explored(wx, wy, self.game.world_state.layer)
 
@@ -107,6 +118,7 @@ class OverworldScene:
         if info:
             _, art_id = info
             self.examine.show(art_id)
+            self.game.audio.play_sfx("ui_examine")
 
     def _update_mouse(self, inp):
         wx0, wy0 = self._camera
@@ -156,7 +168,7 @@ class OverworldScene:
             return False
         if self.sheet.handle_input(inp, self.game.profile, self.examine):
             return False
-        if self.craft.handle_input(inp, self.game.profile, self.game.world_state, self.examine, self.log):
+        if self.craft.handle_input(inp, self.game.profile, self.game.world_state, self.examine, self.log, self.game.audio):
             return False
 
         if inp.mouse_left_clicked():
@@ -190,12 +202,16 @@ class OverworldScene:
             if self.game.world_map.is_walkable(nx, ny, layer):
                 ch, _, _ = self.game.world_map.get_tile(nx, ny, layer)
                 if ch == ">":
+                    self.game.audio.play_sfx("stairs")
                     self.game.request_scene("dungeon_enter")
                     return True
                 if ch == "<":
+                    self.game.audio.play_sfx("stairs")
                     self.game.request_scene("surface_exit")
                     return True
                 self.player.move(d[0], d[1])
+                surface = resolve_footstep(nx, ny, layer, self.game.world_map)
+                self.game.audio.play_footstep(surface)
                 self.game.world_state.turn_count += 1
                 active, _ = self.weather.on_turn(self._in_shelter())
                 if active and layer == "surface":
@@ -222,20 +238,24 @@ class OverworldScene:
                     return
                 self.game.profile.inventory.add("grey_herb", 1, 20)
                 self._clear_tile(tx, ty, layer)
+                self.game.audio.play_sfx("pickup")
                 self.log.add("Собрана серая трава.")
                 return
             if ch == "+":
                 self.game.profile.inventory.add("root_fiber", 1, 20)
                 self._clear_tile(tx, ty, layer)
+                self.game.audio.play_sfx("pickup")
                 self.log.add("Собрано корневое волокно.")
                 return
             if ch == "*":
                 self.game.profile.inventory.add("star_shard", 1, 10)
                 self._clear_tile(tx, ty, layer)
+                self.game.audio.play_sfx("pickup")
                 self.log.add("Найден осколок звезды.")
                 return
             if ch == "$":
                 self.game.profile.inventory.add("ash_clump", 2, 30)
+                self.game.audio.play_sfx("pickup")
                 self.log.add("Подобран пепел.")
                 return
             if ch == "&":

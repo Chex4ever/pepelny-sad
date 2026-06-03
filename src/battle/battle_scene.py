@@ -35,7 +35,7 @@ class BattleScene:
 
     MENU = ["Fight", "Act", "Item", "Mercy"]
 
-    def __init__(self, enemy_id: str, profile, world_state, on_done):
+    def __init__(self, enemy_id: str, profile, world_state, on_done, audio=None):
         self.enemy_id = enemy_id
         self.enemies = load_enemies()
         self.enemy = dict(self.enemies[enemy_id])
@@ -43,6 +43,7 @@ class BattleScene:
         self.profile = profile
         self.world_state = world_state
         self.on_done = on_done
+        self.audio = audio
         self.phase = self.PHASE_INTRO
         self.intro_timer = 90
         self.menu_cursor = 0
@@ -64,6 +65,8 @@ class BattleScene:
         self.dodge_max = 180
         self.frame = 0
         self.reveal_tell = False
+        if self.audio:
+            self.audio.play_sfx("battle_start")
 
     def _log(self, msg: str):
         self.log.append(msg)
@@ -86,6 +89,8 @@ class BattleScene:
                     dmg = max(1, 4 - self.combat.armor // 2)
                     self.profile.hp -= dmg
                     self._log(f"Попадание! -{dmg} HP")
+                    if self.audio:
+                        self.audio.play_sfx("hit")
                     if self.profile.hp <= 0:
                         self.result = "lose"
                         self.phase = self.PHASE_END
