@@ -23,6 +23,7 @@ from src.story.intro import IntroScene
 from src.ui.title_screen import TitleScreen
 from src.ui.windows.character_sheet_window import CharacterSheetWindow
 from src.ui.windows.craft_window import CraftWindow
+from src.ui.windows.debug_window import DebugWindow
 from src.ui.windows.examine_window import ExamineWindow
 from src.ui.windows.help_window import HelpWindow
 from src.ui.windows.log_window import LogWindow
@@ -50,6 +51,7 @@ class Game:
         self.buffer = ScreenBuffer(SCREEN_W, SCREEN_H)
         self.input = InputState()
         self.clock = pygame.time.Clock()
+        self.fps = 0.0
         self.running = True
         self.scene = "title"
         self.world_state = WorldState(world_seed=random.randint(1, 99999))
@@ -70,11 +72,13 @@ class Game:
             CharacterSheetWindow(),
             CraftWindow(),
             HelpWindow(),
+            DebugWindow(),
             PauseWindow(),
         ):
             self.windows.register(w)
         self.pause = self.windows.get("pause")
         self.help = self.windows.get("help")
+        self.debug = self.windows.get("debug")
         self.transition = TransitionManager()
         self._pending_action: str | None = None
         self._fade_overlay = pygame.Surface(
@@ -115,6 +119,7 @@ class Game:
     def run(self):
         while self.running:
             dt_ms = self.clock.tick(FPS)
+            self.fps = self.clock.get_fps()
             pygame.event.pump()
             self.input.begin_frame()
             for event in pygame.event.get():
@@ -136,6 +141,7 @@ class Game:
             self.windows.draw(self.buffer)
         self.pause.draw(self.buffer)
         self.help.draw(self.buffer)
+        self.debug.draw(self.buffer)
         self.renderer.draw(self.buffer)
         alpha = self.transition.alpha()
         if alpha > 0:

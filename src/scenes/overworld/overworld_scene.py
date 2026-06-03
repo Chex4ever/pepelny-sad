@@ -69,6 +69,32 @@ class OverworldScene:
     def handle_input(self, inp):
         return self.input_router.handle_input(inp)
 
+    def debug_lines(self, fps: float) -> list[str]:
+        g = self.game
+        wx0, wy0 = self.camera.view_origin()
+        from src.constants import CHUNK_SIZE
+
+        layer_id = g.world_state.layer
+        layer_label = "поверхность" if layer_id == "surface" else "подземелье"
+        chunk_x = self.player.x // CHUNK_SIZE
+        chunk_y = self.player.y // CHUNK_SIZE
+        weather = "шторм" if self.weather.active else "ясно"
+        visible_n = len(self.visible)
+        return [
+            f"FPS: {fps:.1f}",
+            f"Сцена: overworld",
+            f"Layer: {layer_id} ({layer_label})",
+            f"Turn: {g.world_state.turn_count}",
+            f"Seed: {g.world_state.world_seed}",
+            f"Player: ({self.player.x}, {self.player.y})",
+            f"Camera: ({wx0}, {wy0}) pan ({self.camera.pan_x}, {self.camera.pan_y})",
+            f"Chunk: ({chunk_x}, {chunk_y})",
+            f"Visible tiles: {visible_n}",
+            f"Weather: {weather}",
+            f"Companions: {len(g.world_state.companions)}",
+            f"Boss cleared: {g.world_state.boss_cleared}",
+        ]
+
     def _open_dialogue(self, did: str) -> None:
         self.interaction.open_dialogue(did)
 

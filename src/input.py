@@ -8,6 +8,7 @@ from src.constants import CELL_H, CELL_W
 # SDL2 scancodes — physical key positions, layout-independent (QWERTY).
 SCAN_ESCAPE = 41
 SCAN_F1 = 58
+SCAN_F4 = 61
 SCAN_F5 = 62
 SCAN_F9 = 67
 SCAN_W, SCAN_A, SCAN_S, SCAN_D = 26, 4, 22, 7
@@ -210,6 +211,9 @@ class InputState:
 
     def pressed_f1(self) -> bool:
         return self.any_pressed(pygame.K_F1) or self.scancode_pressed(SCAN_F1)
+
+    def pressed_f4(self) -> bool:
+        return self.any_pressed(pygame.K_F4) or self.scancode_pressed(SCAN_F4)
 
     def pressed_tab(self) -> bool:
         return self.any_pressed(pygame.K_TAB) or self.scancode_pressed(SCAN_TAB)

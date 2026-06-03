@@ -59,6 +59,8 @@ class ScreenBuffer:
         self.fg_a[i] = fg_a
         self.bg_a[i] = bg_a
         self.light[i] = light
+        self.fog[i] = FOG_NONE
+        self.fog_a[i] = 0
 
     def set_fg_only(
         self,

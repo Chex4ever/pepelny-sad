@@ -107,12 +107,17 @@ class SceneManager:
 
         pause = g.pause
         help_w = g.help
+        debug_w = g.debug
 
         if inp.pressed_f1() and g.scene != "title":
             help_w.toggle()
+        if inp.pressed_f4() and g.scene != "title":
+            debug_w.toggle()
         if inp.pressed_escape():
             if help_w.visible:
                 help_w.close()
+            elif debug_w.visible:
+                debug_w.close()
             elif pause.visible:
                 pause.close()
                 g.audio.resume_music()
@@ -132,8 +137,9 @@ class SceneManager:
             self.handle_pause_action(pause_action)
 
         help_w.handle_keys(inp)
+        debug_w.handle_keys(inp)
 
-        ui_blocked = pause.visible or help_w.visible
+        ui_blocked = pause.visible
 
         if g.scene == "title":
             g._update_title()
@@ -163,6 +169,8 @@ class SceneManager:
                 )
                 self.start_transition("battle")
             else:
+                if debug_w.visible:
+                    debug_w.set_lines(g.overworld.debug_lines(g.fps))
                 g.overworld.draw(g.buffer, inp)
         elif g.scene == "battle" and g.battle:
             g.battle.update()

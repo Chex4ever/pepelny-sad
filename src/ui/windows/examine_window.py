@@ -9,6 +9,7 @@ from src.ui.windows.base import ModalWindow
 
 class ExamineWindow(ModalWindow):
     name = "examine"
+    blocks_world_input = False
 
     def __init__(self):
         super().__init__("ОСМОТР", x=62, y=4, w=36, h=22, visible=False)
