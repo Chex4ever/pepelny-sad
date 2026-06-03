@@ -188,6 +188,12 @@ jobs:
           cp release/linux/* release/all/
           ls -la release/all
       - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(tr -d '\r\n' < VERSION)
+          gh release delete "v${VERSION}" --yes 2>/dev/null || true
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.version.outputs.version }}
