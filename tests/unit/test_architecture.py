@@ -52,6 +52,33 @@ def test_window_manager_z_order_focus():
     assert wm._windows[-1] is a
 
 
+def test_window_drag_clamps_position():
+    from src.ui.windows.base import ModalWindow, buf_safe_max_x, buf_safe_max_y
+
+    assert buf_safe_max_x(26, 200) == 74  # SCREEN_W=100
+    w = ModalWindow("LOG", x=72, y=1, w=26, h=14, visible=True)
+    w._dragging = True
+    w._drag_off = (2, 0)
+
+    class DragInput:
+        def mouse_grid(self):
+            return (80, 5)
+
+        def mouse_left_held(self):
+            return True
+
+        def mouse_left_down(self):
+            return False
+
+        def mouse_left_released(self):
+            return False
+
+    consumed = w.handle_input(DragInput(), 80, 5)
+    assert consumed
+    assert 0 <= w.x <= 74
+    assert buf_safe_max_y(14, 50) == 29  # MAP_ORIGIN_Y + MAP_VIEW_H - h
+
+
 def test_input_mouse_drag_detection():
     inp = InputState()
     inp.begin_frame()

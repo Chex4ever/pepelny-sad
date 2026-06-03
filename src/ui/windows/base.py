@@ -114,8 +114,8 @@ class ModalWindow:
             self._dragging = False
         if self._dragging and inp.mouse_left_held():
             ngx, ngy = inp.mouse_grid()
-            self.x = max(0, min(buf_safe_max_x(self.w, ngx - self._drag_off[0])))
-            self.y = max(0, min(buf_safe_max_y(self.h, ngy - self._drag_off[1])))
+            self.x = max(0, buf_safe_max_x(self.w, ngx - self._drag_off[0]))
+            self.y = max(0, buf_safe_max_y(self.h, ngy - self._drag_off[1]))
             return True
         return self.contains(gx, gy)
 
