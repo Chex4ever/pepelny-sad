@@ -1,0 +1,56 @@
+---
+description: Gitflow — ветки, коммиты, PR, self-review, merge
+alwaysApply: true
+---
+
+# Gitflow
+
+## Ветки
+
+- `main` — стабильная, только через merge PR
+- `feature/<краткое-имя>` — каждая задача/фича в отдельной ветке от `main`
+- `fix/<краткое-имя>` — багфиксы
+- `chore/<краткое-имя>` — инфра, правила, CI, README
+
+## Коммиты
+
+- Коммитить **часто** и **атомарно** (одна логическая правка = один коммит)
+- Сообщения на английском или русском, в повелительном наклонении: `Add title screen ash animation`
+- Не коммитить: `__pycache__`, `.coverage`, `save.pkl`, секреты
+
+## Workflow (обязательно)
+
+1. `git checkout main && git pull`
+2. `git checkout -b feature/my-task`
+3. Реализация + тесты (`python -m pytest`)
+4. `git add` → `git commit`
+5. `git push -u origin feature/my-task`
+6. **Pull Request** в `main` через `gh pr create`
+7. **Self-review**: пройти diff, чеклист ниже, поправить замечания в той же ветке
+8. CI/тесты зелёные → `gh pr merge` (squash или merge commit — по задаче)
+9. Удалить feature-ветку локально и на remote
+
+## Self-review чеклист
+
+- [ ] Diff минимален, без лишнего scope
+- [ ] Тесты добавлены/обновлены; `pytest` проходит
+- [ ] Нет регрессий (regression-тесты для startup/input при изменении init)
+- [ ] README/правила обновлены, если менялся UX или setup
+- [ ] Нет секретов и артеfactов в коммите
+
+## PR template (body)
+
+```markdown
+## Summary
+- …
+
+## Test plan
+- [ ] `python -m pytest`
+- [ ] Ручная проверка: …
+```
+
+## Запрещено
+
+- Прямой push в `main` (кроме hotfix по договорённости)
+- Force-push в `main`
+- `--no-verify` без явной просьбы пользователя

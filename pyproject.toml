@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: end-to-end tests across multiple modules",
+    "regression: startup/import-order bugs; run in isolated subprocess",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/data/art/_catalog.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "def main\\(\\):",
+]
