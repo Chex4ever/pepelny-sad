@@ -65,7 +65,10 @@ inp.sync_keyboard()
 g.input = inp
 g._update_title()
 
-assert g.scene == "overworld", g.scene
+while g.transition.active:
+    g.transition.update(300)
+
+assert g.scene == "intro", g.scene
 assert g.overworld is not None
 print("title ok")
 """

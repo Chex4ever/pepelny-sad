@@ -66,10 +66,27 @@ def screen_buffer():
 @pytest.fixture
 def game():
     from src.game import Game
+    from src.overworld.overworld_scene import OverworldScene
+    from src.progression.player_profile import PlayerProfile
+    from src.world.world_map import WorldMap
+    from src.world.world_state import WorldState
 
     g = Game()
-    g.new_game(seed=4242)
+    g.world_state = WorldState(world_seed=4242)
+    g.profile = PlayerProfile()
+    g.profile.inventory.add("grey_herb", 3, 20)
+    g.profile.inventory.add("root_fiber", 2, 20)
+    g.world_map = WorldMap(4242)
+    g.overworld = OverworldScene(g)
+    g.scene = "overworld"
+    g.transition.active = False
     return g
+
+
+def drain_transition(game, step_ms: int = 300):
+    """Advance TransitionManager until idle (for tests)."""
+    while game.transition.active:
+        game.transition.update(step_ms)
 
 
 @pytest.fixture
@@ -105,6 +122,24 @@ class FakeInput:
 
     def confirm_pressed(self) -> bool:
         return self.action_pressed()
+
+    def any_key_pressed(self) -> bool:
+        return bool(self._pressed)
+
+    def mouse_left_clicked(self) -> bool:
+        return False
+
+    def mouse_grid(self, char_w=16, char_h=16) -> tuple[int, int]:
+        return (0, 0)
+
+    def mouse_world(self, camera_x: int, camera_y: int, map_origin_y: int = 1):
+        return None
+
+    def handle_event(self, event):
+        pass
+
+    def sync_keyboard(self):
+        pass
 
     def dir_key(self):
         import pygame
