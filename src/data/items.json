@@ -1,0 +1,68 @@
+{
+  "grey_tincture": {
+    "name": "Серый отвар",
+    "type": "consumable",
+    "stack_max": 5,
+    "art_id": "grey_tincture",
+    "effect": {"heal": 8}
+  },
+  "woven_pack": {
+    "name": "Плетёный рюкзак",
+    "type": "module",
+    "art_id": "woven_pack",
+    "module_effect": {"inventory": 4}
+  },
+  "ash_blade": {
+    "name": "Пепельный клинок",
+    "type": "equipment",
+    "slot": "hand_r",
+    "art_id": "ash_blade",
+    "fight_damage": 12,
+    "combat_traits": {"fight_mode": "blade"}
+  },
+  "root_staff": {
+    "name": "Корневой посох",
+    "type": "equipment",
+    "slot": "hand_r",
+    "art_id": "root_staff",
+    "fight_damage": 6,
+    "combat_traits": {"fight_mode": "staff"}
+  },
+  "root_greaves": {
+    "name": "Корневые поножи",
+    "type": "equipment",
+    "slot": "legs",
+    "art_id": "root_greaves",
+    "armor": 3,
+    "combat_traits": {"box_shape": "wide"}
+  },
+  "ash_tunic": {
+    "name": "Пепельный доспех",
+    "type": "equipment",
+    "slot": "chest",
+    "art_id": "ash_tunic",
+    "max_hp": 15,
+    "armor": 4
+  },
+  "star_amulet": {
+    "name": "Звёздный амулет",
+    "type": "equipment",
+    "slot": "amulet",
+    "art_id": "star_amulet",
+    "combat_traits": {"extra_act": "whisper"}
+  },
+  "pepel_lantern": {
+    "name": "Фонарь пепла",
+    "type": "equipment",
+    "slot": "hand_l",
+    "art_id": "pepel_lantern",
+    "combat_traits": {"lantern": true}
+  },
+  "memory_shard": {
+    "name": "Осколок памяти",
+    "type": "consumable",
+    "stack_max": 1,
+    "art_id": "memory_shard",
+    "effect": {"heal": 20, "story": true}
+  }
+}

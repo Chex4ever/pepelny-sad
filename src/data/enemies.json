@@ -1,0 +1,41 @@
+{
+  "whisper": {
+    "name": "Шёпот",
+    "art_id": "whisper",
+    "hp": 20,
+    "patterns": ["rain"],
+    "material_drops": [{"id": "grey_herb", "count": 2}],
+    "companion_id": "whisper_companion",
+    "acts": [
+      {"id": "listen", "label": "Прислушаться", "text": "Ветер повторяет имя, которое ты боялся произнести.", "scan_effect": {"type": "unlock_recipe", "recipe": "grey_tincture"}},
+      {"id": "name_lyra", "label": "Назвать Лиру", "text": "Шёпот замирает. Тишина отвечает тишиной.", "scan_effect": {"type": "unlock_mercy"}},
+      {"id": "touch", "label": "Коснуться ветки", "text": "Холодная кора. Живая.", "scan_effect": {"type": "reveal_pattern", "pattern": "rain"}}
+    ]
+  },
+  "sorrow": {
+    "name": "Скорбь-искра",
+    "art_id": "sorrow",
+    "hp": 35,
+    "patterns": ["rain", "sides"],
+    "material_drops": [{"id": "ash_clump", "count": 3}, {"id": "star_shard", "count": 1}],
+    "companion_id": "sorrow_companion",
+    "acts": [
+      {"id": "catch", "label": "Поймать отблеск", "text": "Искра не жжёт — она плачет.", "scan_effect": {"type": "reveal_pattern", "pattern": "rain"}},
+      {"id": "warm", "label": "Согреть ладонями", "text": "Тепло возвращается на миг.", "scan_effect": {"type": "unlock_recipe", "recipe": "ash_blade"}},
+      {"id": "ask", "label": "Спросить о Лире", "text": "Она видела звезду, что погасла не там.", "scan_effect": {"type": "unlock_mercy"}}
+    ]
+  },
+  "warden": {
+    "name": "Страж Корней",
+    "art_id": "warden",
+    "hp": 60,
+    "patterns": ["spiral", "sides"],
+    "material_drops": [{"id": "echo_dust", "count": 5}],
+    "companion_id": null,
+    "acts": [
+      {"id": "remember", "label": "Вспомнить сад", "text": "Корни помнят цветы. Ты — тоже.", "scan_effect": {"type": "unlock_mercy"}},
+      {"id": "pain", "label": "Признать боль", "text": "Боль не враг. Она — доказательство любви.", "scan_effect": {"type": "unlock_recipe", "recipe": "star_amulet"}},
+      {"id": "roots", "label": "Услышать корни", "text": "Они держат то, что уже упало.", "scan_effect": {"type": "reveal_pattern", "pattern": "spiral"}}
+    ]
+  }
+}
