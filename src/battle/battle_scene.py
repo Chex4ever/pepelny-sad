@@ -155,6 +155,23 @@ class BattleScene:
             self.examine.show(self.enemy.get("art_id", self.enemy_id))
             return
 
+        if inp.mouse_left_clicked() and self.phase in (
+            self.PHASE_MENU,
+            self.PHASE_ACT,
+            self.PHASE_ITEM,
+            self.PHASE_INTRO,
+        ):
+            gx, gy = inp.mouse_grid()
+            if gx < 48 and gy < 12:
+                self.examine.show(self.enemy.get("art_id", self.enemy_id))
+                return
+            if self.phase == self.PHASE_ITEM and 48 <= gx <= 72:
+                slots = [s for s in self.profile.inventory.slots if s.item_id]
+                if slots:
+                    slot = slots[min(self.item_cursor, len(slots) - 1)]
+                    self.examine.show(slot.item_id)
+                return
+
         if self.phase in (self.PHASE_MENU, self.PHASE_ACT, self.PHASE_ITEM):
             if inp.any_pressed(pygame.K_UP, pygame.K_w):
                 if self.phase == self.PHASE_ACT:

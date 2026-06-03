@@ -12,6 +12,7 @@ class WorldMap:
         self.seed = seed
         self.chunks: dict[tuple[int, int], Chunk] = {}
         self.dungeon_tiles: dict[tuple[int, int], dict] = {}
+        self.dungeon_explored: set[tuple[int, int]] = set()
         self._landmarks_applied = False
         self._ensure_radius(0, 0)
 
@@ -55,3 +56,21 @@ class WorldMap:
 
     def set_dungeon_tile(self, wx: int, wy: int, ch: str, fg=(120, 120, 140), bg=(20, 20, 28)):
         self.dungeon_tiles[(wx, wy)] = {"ch": ch, "fg": fg, "bg": bg}
+
+    def is_explored(self, wx: int, wy: int, layer: str = "surface") -> bool:
+        if layer == "dungeon":
+            return (wx, wy) in self.dungeon_explored
+        cx, cy, lx, ly = self.world_to_chunk(wx, wy)
+        chunk = self.chunks.get((cx, cy))
+        if not chunk or not chunk.in_bounds(lx, ly):
+            return False
+        return chunk.explored[chunk.idx(lx, ly)]
+
+    def mark_explored(self, wx: int, wy: int, layer: str = "surface"):
+        if layer == "dungeon":
+            self.dungeon_explored.add((wx, wy))
+            return
+        cx, cy, lx, ly = self.world_to_chunk(wx, wy)
+        chunk = self.chunks.get((cx, cy))
+        if chunk:
+            chunk.mark_explored(lx, ly)

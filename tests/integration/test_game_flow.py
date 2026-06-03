@@ -3,16 +3,20 @@ import pytest
 import pygame
 
 from src.battle.battle_scene import BattleScene
+from src.game import Game
 from src.world.save import load_game, save_game
-from tests.conftest import FakeInput
+from tests.conftest import FakeInput, drain_transition
 
 
 @pytest.mark.integration
-def test_new_game_initial_state(game):
-    assert game.scene == "overworld"
-    assert game.overworld is not None
-    assert game.profile.inventory.has("grey_herb")
-    assert game.world_state.world_seed == 4242
+def test_new_game_initial_state():
+    g = Game()
+    g.new_game(seed=4242)
+    assert g.overworld is not None
+    assert g.profile.inventory.has("grey_herb")
+    assert g.world_state.world_seed == 4242
+    drain_transition(g)
+    assert g.scene == "intro"
 
 
 @pytest.mark.integration
@@ -66,6 +70,7 @@ def test_battle_transition_from_overworld(game):
     game.battle.phase = BattleScene.PHASE_END
     game.battle.result = "spare"
     game.battle.handle_input(FakeInput(pressed={pygame.K_RETURN}))
+    drain_transition(game)
     assert game.scene == "overworld"
     assert game.battle is None
 
@@ -74,5 +79,6 @@ def test_battle_transition_from_overworld(game):
 def test_boss_battle_triggers_ending(game):
     game.enemy_id_boss = True
     game._on_battle_done("spare")
+    drain_transition(game)
     assert game.scene == "ending"
     assert game.ending_data is not None

@@ -88,7 +88,9 @@ from src.game import Game
 g = Game()
 assert g.world_map is not None
 g.new_game(seed=1)
-assert g.scene == "overworld"
+while g.transition.active:
+    g.transition.update(300)
+assert g.scene == "intro"
 print("game ok")
 """
     result = _run_isolated(code)

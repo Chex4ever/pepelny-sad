@@ -7,7 +7,7 @@ from src.ui.title_screen import TitleScreen
 def test_title_screen_draws_garden_and_ash():
     buf = ScreenBuffer(SCREEN_W, SCREEN_H)
     screen = TitleScreen()
-    screen.draw(buf, seed=42, frame=60, title_seed=42)
+    screen.draw(buf, seed=42, elapsed_ms=4500, title_seed=42)
 
     chars = set(buf.chars)
     assert "," in chars or "." in chars  # ground
@@ -20,6 +20,6 @@ def test_title_screen_animates_with_frame():
     buf1 = ScreenBuffer(SCREEN_W, SCREEN_H)
     buf2 = ScreenBuffer(SCREEN_W, SCREEN_H)
     screen = TitleScreen()
-    screen.draw(buf1, seed=7, frame=0, title_seed=7)
-    screen.draw(buf2, seed=7, frame=120, title_seed=7)
+    screen.draw(buf1, seed=7, elapsed_ms=0, title_seed=7)
+    screen.draw(buf2, seed=7, elapsed_ms=4500, title_seed=7)
     assert buf1.chars != buf2.chars
