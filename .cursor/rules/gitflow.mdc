@@ -23,7 +23,7 @@ alwaysApply: true
 
 1. `git checkout main && git pull`
 2. `git checkout -b feature/my-task`
-3. Реализация + тесты (`python -m pytest`)
+3. Реализация + **тесты** (см. правило `testing.mdc`: unit / integration / regression)
 4. `git add` → `git commit` — **сразу**, не ждать «можно коммитить?»
 5. `git push -u origin feature/my-task`
 6. **Pull Request** в `main` через `gh pr create` — **сразу после push**, не спрашивать
@@ -40,8 +40,10 @@ alwaysApply: true
 ## Self-review чеклист
 
 - [ ] Diff минимален, без лишнего scope
-- [ ] Тесты добавлены/обновлены; `pytest` проходит
-- [ ] Нет регрессий (regression-тесты для startup/input при изменении init)
+- [ ] **Unit** — покрыта изменённая логика (`tests/unit/`)
+- [ ] **Integration** — если затронуты сцены или сквозной flow (`tests/integration/`)
+- [ ] **Regression** — если bugfix (`tests/regression/`, тест падает без фикса)
+- [ ] `python -m pytest` проходит
 - [ ] README/правила обновлены, если менялся UX или setup
 - [ ] Нет секретов и артеfactов в коммите
 

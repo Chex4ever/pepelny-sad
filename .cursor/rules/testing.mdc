@@ -1,0 +1,43 @@
+---
+description: Политика автотестов — unit, integration, regression
+alwaysApply: true
+---
+
+# Тестирование
+
+## Обязательно для каждого PR
+
+- **`python -m pytest`** — все тесты зелёные до push/merge
+- Новый или изменённый код **сопровождается тестами** — без исключений «потом добавим»
+
+## Три уровня
+
+| Уровень | Папка | Когда писать |
+|---------|-------|--------------|
+| **Unit** | `tests/unit/` | Каждый модуль/класс/функция с нетривиальной логикой: чистые функции, парсеры, FOV, input, UI-хелперы, save, crafting |
+| **Integration** | `tests/integration/` | Сценарии через несколько модулей: overworld flow, battle, UI flow, audio hooks, game loop |
+| **Regression** | `tests/regression/` | **Каждый исправленный баг** — тест, который падает до фикса и проходит после; startup order, input, импорты |
+
+## Правила написания
+
+- **Баг** → сначала (или в том же PR) **regression-тест** с комментарием, что именно ломалось (например: «window drag: min(int) crash»)
+- **Новый модуль** в `src/` → **unit-тесты** в `tests/unit/test_<module>.py`
+- **Новая фича/сцена** (overworld, battle, craft…) → **integration-тест** в `tests/integration/`
+- Использовать фикстуры из `tests/conftest.py` (`game`, `profile`, `FakeInput`, …)
+- Regression для порядка импортов / `main.py` — subprocess, см. `tests/regression/test_startup_data_dir.py`
+
+## Self-review (тесты)
+
+- [ ] Unit-покрытие для изменённой логики
+- [ ] Integration — если затронуты сцены или сквозной flow
+- [ ] Regression — если это bugfix
+- [ ] `pytest` локально и в CI
+
+## Команды
+
+```bash
+python -m pytest                  # всё
+python -m pytest tests/unit       # только unit
+python -m pytest tests/integration -m integration
+python -m pytest tests/regression -m regression
+```
