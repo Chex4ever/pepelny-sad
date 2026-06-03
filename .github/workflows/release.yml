@@ -150,13 +150,12 @@ jobs:
           cp release/win/* release/all/ || true
           cp release/linux/* release/all/ || true
           ls -la release/all
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.version.outputs.version }}
-          name: v${{ needs.version.outputs.version }}
-          generate_release_notes: true
-          files: release/all/*
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(tr -d '\r\n' < VERSION)
+          python tools/publish_github_release.py release/all "v${VERSION}"
 
   commit-version:
     needs: [version, publish]
