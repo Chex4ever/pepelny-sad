@@ -10,13 +10,14 @@ HELP_LINES = [
     "E — действие / сбор",
     "Tab — персонаж",
     "ЛКМ — осмотр · drag — обзор",
-    "O — осмотр (клавиатура)",
-    "F5 — сохранить",
-    "F1 — эта справка",
-    "Esc — пауза",
+    "O — осмотр под курсором / себя",
+    "F5 — сохранить · F9 — загрузка",
+    "F1 — эта справка · F4 — debug",
+    "Esc — пауза · закрыть окно",
     "Бой: стрелки + Enter, dodge WASD",
     "Fight QTE: Space",
-    "Окна: drag заголовок, [−] свернуть, [×] закрыть",
+    "Окна: drag заголовок, − свернуть, × закрыть",
+    "Осмотр не блокирует движение",
 ]
 
 
@@ -25,7 +26,7 @@ class HelpWindow(ModalWindow):
     blocks_world_input = False
 
     def __init__(self):
-        super().__init__("СПРАВКА F1", x=60, y=2, w=38, h=16, visible=False)
+        super().__init__("СПРАВКА F1", x=58, y=2, w=40, h=17, visible=False)
 
     def toggle(self) -> None:
         if self.visible:

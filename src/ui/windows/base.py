@@ -60,13 +60,17 @@ class ModalWindow:
         return self.x, self.y + 1, self.w, max(1, self.h - 1)
 
     def title_bar_hit(self, gx: int, gy: int) -> bool:
-        return self.visible and self.x <= gx < self.x + self.w and gy == self.y
+        if not self.visible or gy != self.y:
+            return False
+        close_x = self.x + self.w - 2
+        min_x = self.x + self.w - 4
+        return self.x <= gx < self.x + self.w and gx not in (close_x, min_x)
 
     def close_button_hit(self, gx: int, gy: int) -> bool:
         return self.visible and gy == self.y and gx == self.x + self.w - 2
 
     def minimize_button_hit(self, gx: int, gy: int) -> bool:
-        return self.visible and gy == self.y and gx == self.x + self.w - 3
+        return self.visible and gy == self.y and gx == self.x + self.w - 4
 
     def contains(self, gx: int, gy: int) -> bool:
         if not self.visible:
@@ -81,11 +85,28 @@ class ModalWindow:
         bg = COLOR_UI_BG
         draw_h = 1 if self.minimized else self.h
         buf.fill_rect(self.x, self.y, self.w, draw_h, bg=bg)
-        buf.draw_box(self.x, self.y, self.w, draw_h, title="", fg=fg, bg=bg)
-        title_text = f" {self.title[: self.w - 8]} "
-        buf.draw_text(self.x + 1, self.y, title_text, fg=COLOR_TEXT, bg=bg)
-        buf.draw_text(self.x + self.w - 3, self.y, "[−]", fg=COLOR_TEXT, bg=bg)
-        buf.draw_text(self.x + self.w - 2, self.y, "[×]", fg=COLOR_TEXT, bg=bg)
+
+        ty = self.y
+        buf.set(self.x, ty, "┌", fg, bg)
+        for ix in range(1, self.w - 1):
+            if ix in (self.w - 4, self.w - 2):
+                continue
+            buf.set(self.x + ix, ty, "─", fg, bg)
+        buf.set(self.x + self.w - 1, ty, "┐", fg, bg)
+
+        title_slot = max(0, self.w - 7)
+        buf.draw_text(self.x + 1, ty, f" {self.title[:title_slot]} ", fg=COLOR_TEXT, bg=bg)
+        buf.draw_text(self.x + self.w - 4, ty, "−", fg=COLOR_TEXT, bg=bg)
+        buf.draw_text(self.x + self.w - 2, ty, "×", fg=COLOR_TEXT, bg=bg)
+
+        if draw_h > 1:
+            for iy in range(1, draw_h - 1):
+                buf.set(self.x, self.y + iy, "│", fg, bg)
+                buf.set(self.x + self.w - 1, self.y + iy, "│", fg, bg)
+            by = self.y + draw_h - 1
+            for ix in range(self.w):
+                ch = "└" if ix == 0 else "┘" if ix == self.w - 1 else "─"
+                buf.set(self.x + ix, by, ch, fg, bg)
 
     def draw(self, buf: ScreenBuffer) -> None:
         self.draw_chrome(buf)
@@ -130,6 +151,6 @@ def buf_safe_max_x(w: int, x: int) -> int:
 
 
 def buf_safe_max_y(h: int, y: int) -> int:
-    from src.constants import MAP_VIEW_H, MAP_ORIGIN_Y
+    from src.constants import MAP_ORIGIN_Y, MAP_VIEW_H
 
     return min(y, MAP_ORIGIN_Y + MAP_VIEW_H - h)

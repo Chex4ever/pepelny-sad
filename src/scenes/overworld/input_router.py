@@ -106,12 +106,6 @@ class OverworldInputRouter:
             windows.handle_input(inp)
             return False
 
-        if ow.examine and ow.examine.visible:
-            if ow.examine.handle_keys(inp):
-                return False
-            windows.handle_input(inp)
-            return False
-
         if windows.any_blocking_world():
             windows.handle_input(inp)
             if inp.pressed_escape():
