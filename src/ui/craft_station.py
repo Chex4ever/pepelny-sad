@@ -55,7 +55,7 @@ class CraftStation:
     def handle_input(self, inp, profile, world_state, examine_panel, log, audio=None) -> bool:
         if not self.open:
             return False
-        if inp.pressed(pygame.K_ESCAPE):
+        if inp.pressed_escape():
             self.open = False
             return True
         visible = [
@@ -63,9 +63,9 @@ class CraftStation:
             for r in self.recipes
             if recipe_visible(r, world_state.discovered_recipes, world_state.scan_flags)
         ]
-        if inp.any_pressed(pygame.K_UP, pygame.K_w):
+        if inp.nav_up_pressed():
             self.cursor = max(0, self.cursor - 1)
-        if inp.any_pressed(pygame.K_DOWN, pygame.K_s):
+        if inp.nav_down_pressed():
             self.cursor = min(max(0, len(visible) - 1), self.cursor + 1)
         if inp.pressed(pygame.K_o) and visible:
             r = visible[min(self.cursor, len(visible) - 1)]

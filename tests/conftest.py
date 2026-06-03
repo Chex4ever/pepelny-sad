@@ -126,6 +126,58 @@ class FakeInput:
     def any_key_pressed(self) -> bool:
         return bool(self._pressed)
 
+    def pressed_escape(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_ESCAPE)
+
+    def pressed_f1(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_F1)
+
+    def pressed_tab(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_TAB)
+
+    def pressed_e(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_e)
+
+    def pressed_f5(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_F5)
+
+    def pressed_f9(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_F9)
+
+    def nav_up_pressed(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_UP, pygame.K_w)
+
+    def nav_down_pressed(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_DOWN, pygame.K_s)
+
+    def nav_left_pressed(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_LEFT, pygame.K_a)
+
+    def nav_right_pressed(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_RIGHT, pygame.K_d)
+
+    def nav_up_held(self) -> bool:
+        return self.nav_up_pressed()
+
+    def nav_down_held(self) -> bool:
+        return self.nav_down_pressed()
+
+    def nav_left_held(self) -> bool:
+        return self.nav_left_pressed()
+
+    def nav_right_held(self) -> bool:
+        return self.nav_right_pressed()
+
     def mouse_left_clicked(self) -> bool:
         return False
 

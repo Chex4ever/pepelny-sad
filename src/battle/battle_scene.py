@@ -117,11 +117,11 @@ class BattleScene:
 
     def handle_input(self, inp):
         if self.examine.open:
-            if inp.pressed(pygame.K_ESCAPE):
+            if inp.pressed_escape():
                 self.examine.close()
             return
         if self.phase == self.PHASE_END:
-            if inp.any_pressed(pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_ESCAPE, pygame.K_SPACE):
+            if inp.action_pressed() or inp.pressed_escape():
                 self.on_done(self.result)
             return
         if self.phase == self.PHASE_INTRO:
@@ -130,13 +130,13 @@ class BattleScene:
             return
         if self.phase == self.PHASE_DODGE:
             spd = 0.8
-            if inp.held(pygame.K_LEFT) or inp.held(pygame.K_a):
+            if inp.nav_left_held():
                 self.soul_x = max(1, self.soul_x - spd)
-            if inp.held(pygame.K_RIGHT) or inp.held(pygame.K_d):
+            if inp.nav_right_held():
                 self.soul_x = min(self.box_w - 1, self.soul_x + spd)
-            if inp.held(pygame.K_UP) or inp.held(pygame.K_w):
+            if inp.nav_up_held():
                 self.soul_y = max(1, self.soul_y - spd)
-            if inp.held(pygame.K_DOWN) or inp.held(pygame.K_s):
+            if inp.nav_down_held():
                 self.soul_y = min(self.box_h - 1, self.soul_y + spd)
             return
         if self.phase == self.PHASE_FIGHT:
@@ -178,14 +178,14 @@ class BattleScene:
                 return
 
         if self.phase in (self.PHASE_MENU, self.PHASE_ACT, self.PHASE_ITEM):
-            if inp.any_pressed(pygame.K_UP, pygame.K_w):
+            if inp.nav_up_pressed():
                 if self.phase == self.PHASE_ACT:
                     self.act_cursor = max(0, self.act_cursor - 1)
                 elif self.phase == self.PHASE_ITEM:
                     self.item_cursor = max(0, self.item_cursor - 1)
                 else:
                     self.menu_cursor = max(0, self.menu_cursor - 1)
-            if inp.any_pressed(pygame.K_DOWN, pygame.K_s):
+            if inp.nav_down_pressed():
                 if self.phase == self.PHASE_ACT:
                     self.act_cursor = min(len(self.enemy["acts"]) - 1, self.act_cursor + 1)
                 elif self.phase == self.PHASE_ITEM:
@@ -194,7 +194,7 @@ class BattleScene:
                 else:
                     self.menu_cursor = min(3, self.menu_cursor + 1)
 
-        if inp.pressed(pygame.K_ESCAPE):
+        if inp.pressed_escape():
             if self.phase != self.PHASE_MENU:
                 self.phase = self.PHASE_MENU
             return
