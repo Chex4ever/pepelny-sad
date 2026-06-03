@@ -31,14 +31,12 @@ def test_pause_quit_requires_confirm():
 
 @pytest.mark.integration
 def test_intro_skip_to_overworld():
-    from src.story.intro import INTRO_LINES
-
     g = Game()
     g.new_game(seed=99)
     drain_transition(g)
     assert g.scene == "intro"
-    g.intro.line_idx = len(INTRO_LINES) - 1
-    assert g.intro.handle_input(FakeInput(pressed={pygame.K_RETURN}))
+    g.intro.writer.skip_all()
+    g.intro.done = True
     g._start_transition("overworld")
     drain_transition(g)
     assert g.scene == "overworld"

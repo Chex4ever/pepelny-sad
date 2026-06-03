@@ -525,6 +525,125 @@
       "volume": 0.48,
       "loop": true,
       "music": true
+    },
+    "voice_default_0": {
+      "file": "sfx/voices/default_0.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_default_1": {
+      "file": "sfx/voices/default_1.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_default": {
+      "group": [
+        "voice_default_0",
+        "voice_default_1"
+      ],
+      "volume": 0.32
+    },
+    "voice_elion_0": {
+      "file": "sfx/voices/elion_0.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_elion_1": {
+      "file": "sfx/voices/elion_1.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_elion": {
+      "group": [
+        "voice_elion_0",
+        "voice_elion_1"
+      ],
+      "volume": 0.32
+    },
+    "voice_elder_0": {
+      "file": "sfx/voices/elder_0.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_elder_1": {
+      "file": "sfx/voices/elder_1.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_elder": {
+      "group": [
+        "voice_elder_0",
+        "voice_elder_1"
+      ],
+      "volume": 0.32
+    },
+    "voice_whisper_0": {
+      "file": "sfx/voices/whisper_0.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_whisper_1": {
+      "file": "sfx/voices/whisper_1.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_whisper": {
+      "group": [
+        "voice_whisper_0",
+        "voice_whisper_1"
+      ],
+      "volume": 0.32
+    },
+    "voice_sorrow_0": {
+      "file": "sfx/voices/sorrow_0.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_sorrow_1": {
+      "file": "sfx/voices/sorrow_1.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_sorrow": {
+      "group": [
+        "voice_sorrow_0",
+        "voice_sorrow_1"
+      ],
+      "volume": 0.32
+    },
+    "voice_warden_0": {
+      "file": "sfx/voices/warden_0.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_warden_1": {
+      "file": "sfx/voices/warden_1.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_warden": {
+      "group": [
+        "voice_warden_0",
+        "voice_warden_1"
+      ],
+      "volume": 0.32
+    },
+    "voice_narrator_0": {
+      "file": "sfx/voices/narrator_0.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_narrator_1": {
+      "file": "sfx/voices/narrator_1.wav",
+      "volume": 0.32,
+      "loop": false
+    },
+    "voice_narrator": {
+      "group": [
+        "voice_narrator_0",
+        "voice_narrator_1"
+      ],
+      "volume": 0.32
     }
   }
 }

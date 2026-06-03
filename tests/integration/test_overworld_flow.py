@@ -29,7 +29,8 @@ def test_dialogue_trigger_at_npc(game):
     game.overworld.player.y = 24
     game.overworld._open_dialogue("elder_intro")
     assert game.overworld.dialogue_open
-    assert len(game.overworld.dialogue_lines) > 0
+    assert game.overworld.dialogue.active
+    assert game.overworld.dialogue.voice == "elder"
 
 
 @pytest.mark.integration

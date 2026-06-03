@@ -32,6 +32,8 @@ class AudioManager:
         self._foot_side = 0
         self._drip_timer_ms = 0.0
         self._drip_next_ms = 12000.0
+        self._voice_last_ms = 0.0
+        self._voice_cooldown_ms = 18.0
 
     def init(self, base_path: str | None = None) -> bool:
         self._base_path = base_path or ""
@@ -98,6 +100,34 @@ class AudioManager:
         self._foot_side = 1 - self._foot_side
         side_mod = 1.03 if self._foot_side else 0.97
         return self.play_sfx(group_id, volume=vol_jitter * side_mod)
+
+    def play_voice_blip(self, voice: str, variant: int = 0, *, volume: float = 1.0) -> bool:
+        if not self.enabled:
+            return False
+        now = time.monotonic() * 1000
+        if now - self._voice_last_ms < self._voice_cooldown_ms:
+            return False
+        self._voice_last_ms = now
+        group_id = f"voice_{voice}"
+        pool = self._groups.get(group_id)
+        sid = None
+        if pool:
+            sid = pool[variant % len(pool)]
+        if sid is None:
+            alt = f"voice_{voice}_{variant}"
+            if alt in self._sounds:
+                sid = alt
+        if sid is None:
+            sid = self._pick_sound_id("voice_default")
+        if sid is None or sid not in self._sounds:
+            return False
+        entry = self._manifest.get(sid, {})
+        base_vol = float(entry.get("volume", 0.35))
+        vol = max(0.0, min(1.0, volume * base_vol * self._master_sfx * random.uniform(0.92, 1.05)))
+        ch = self._sounds[sid].play()
+        if ch:
+            ch.set_volume(vol)
+        return True
 
     def set_loop(self, sound_id: str, active: bool, volume: float = 0.0):
         if not self.enabled:
