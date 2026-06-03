@@ -62,15 +62,15 @@ class PauseMenu:
             if inp.action_pressed():
                 self.close()
                 return "quit"
-            if inp.pressed(pygame.K_ESCAPE):
+            if inp.pressed_escape():
                 self.confirm_quit = False
             return None
-        if inp.pressed(pygame.K_ESCAPE):
+        if inp.pressed_escape():
             self.close()
             return None
-        if inp.any_pressed(pygame.K_UP, pygame.K_w):
+        if inp.nav_up_pressed():
             self.cursor = max(0, self.cursor - 1)
-        if inp.any_pressed(pygame.K_DOWN, pygame.K_s):
+        if inp.nav_down_pressed():
             self.cursor = min(len(self.OPTIONS) - 1, self.cursor + 1)
         if inp.action_pressed():
             choice = self.OPTIONS[self.cursor]

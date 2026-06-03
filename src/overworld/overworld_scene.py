@@ -155,7 +155,7 @@ class OverworldScene:
 
     def handle_input(self, inp):
         if self.examine.open:
-            if inp.pressed(pygame.K_ESCAPE):
+            if inp.pressed_escape():
                 self.examine.close()
             return False
         if self.dialogue_open:
@@ -183,14 +183,14 @@ class OverworldScene:
             self._try_examine_world(self.player.x, self.player.y)
             return False
 
-        if inp.pressed(pygame.K_TAB):
+        if inp.pressed_tab():
             self.sheet.open = not self.sheet.open
             return False
-        if inp.pressed(pygame.K_F5):
+        if inp.pressed_f5():
             self._save_checkpoint()
             self.log.add("Сохранено (F5).")
             return False
-        if inp.pressed(pygame.K_F9):
+        if inp.pressed_f9():
             data = load_game()
             if data:
                 self.game.restore_state(data)
@@ -223,7 +223,7 @@ class OverworldScene:
                     self.pending_battle = bid
                     self.game.world_state.defeated_battles.add((nx, ny, layer))
 
-        if inp.pressed(pygame.K_e):
+        if inp.pressed_e():
             self._interact()
         return False
 

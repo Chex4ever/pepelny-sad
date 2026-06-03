@@ -210,9 +210,9 @@ class Game:
             self.transition.update(dt_ms)
             self.audio.update(dt_ms)
 
-            if self.input.pressed(pygame.K_F1) and self.scene != "title":
+            if self.input.pressed_f1() and self.scene != "title":
                 self.help.toggle()
-            if self.input.pressed(pygame.K_ESCAPE):
+            if self.input.pressed_escape():
                 if self.help.open:
                     self.help.close()
                 elif self.pause.open:

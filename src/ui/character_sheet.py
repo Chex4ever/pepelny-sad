@@ -43,7 +43,7 @@ class CharacterSheet:
     def handle_input(self, inp, profile, examine_panel) -> bool:
         if not self.open:
             return False
-        if inp.pressed(pygame.K_TAB) or inp.pressed(pygame.K_ESCAPE):
+        if inp.pressed_tab() or inp.pressed_escape():
             self.open = False
             return True
         if inp.pressed(pygame.K_o):
@@ -56,15 +56,15 @@ class CharacterSheet:
                 if slot.item_id:
                     examine_panel.show(slot.item_id)
             return True
-        if inp.any_pressed(pygame.K_UP, pygame.K_w):
+        if inp.nav_up_pressed():
             self.cursor = max(0, self.cursor - 1)
-        if inp.any_pressed(pygame.K_DOWN, pygame.K_s):
+        if inp.nav_down_pressed():
             max_c = len(SLOTS) - 1 if self.mode == "equip" else 7
             self.cursor = min(max_c, self.cursor + 1)
-        if inp.pressed(pygame.K_LEFT) or inp.pressed(pygame.K_a):
+        if inp.nav_left_pressed():
             self.mode = "equip"
             self.cursor = 0
-        if inp.pressed(pygame.K_RIGHT) or inp.pressed(pygame.K_d):
+        if inp.nav_right_pressed():
             self.mode = "inventory"
             self.cursor = 0
         if inp.pressed(pygame.K_RETURN):
