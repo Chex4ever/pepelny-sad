@@ -7,7 +7,7 @@ root = Path(SPECPATH).resolve().parent.parent
 
 datas = [
     (str(root / "assets"), "assets"),
-    (str(root / "src" / "data"), "src" / "data"),
+    (str(root / "src" / "data"), "src/data"),
     (str(root / "VERSION"), "."),
 ]
 
