@@ -39,9 +39,9 @@ def test_mouse_grid_maps_pixels():
 def test_mouse_world_respects_map_bounds():
     inp = InputState()
     inp.mouse_pos = (0, CELL_H * 2)
-    assert inp.mouse_world(10, 20, map_origin_y=1) == (10, 21)
+    assert inp.mouse_world(10, 20, map_origin_y=0) == (10, 22)
     inp.mouse_pos = (MAP_VIEW_W * CELL_W + 10, CELL_H)
-    assert inp.mouse_world(0, 0, map_origin_y=1) is None
+    assert inp.mouse_world(0, 0, map_origin_y=0) is None
 
 
 def test_title_phases_progress():
