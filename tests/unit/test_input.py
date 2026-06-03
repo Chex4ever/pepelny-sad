@@ -69,6 +69,8 @@ def test_sync_keyboard_after_keydown():
 
 def test_sync_populates_scancode_pressed(monkeypatch):
     """pygame-ce get_pressed() is scancode-indexed; sync must fill scancodes_pressed."""
+    import pygame.key as pgkey
+
     class _ScanView:
         __slots__ = ("active",)
 
@@ -85,9 +87,9 @@ def test_sync_populates_scancode_pressed(monkeypatch):
     pressed = _ScanView({SCAN_W, SCAN_RETURN})
     released = _ScanView()
 
-    monkeypatch.setattr("pygame.key.get_pressed", lambda: held)
-    monkeypatch.setattr("pygame.key.get_just_pressed", lambda: pressed)
-    monkeypatch.setattr("pygame.key.get_just_released", lambda: released)
+    monkeypatch.setattr(pgkey, "get_pressed", lambda: held, raising=False)
+    monkeypatch.setattr(pgkey, "get_just_pressed", lambda: pressed, raising=False)
+    monkeypatch.setattr(pgkey, "get_just_released", lambda: released, raising=False)
 
     inp = InputState()
     inp.sync_keyboard()
