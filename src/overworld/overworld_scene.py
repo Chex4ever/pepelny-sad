@@ -10,6 +10,8 @@ from src.overworld.player import OverworldPlayer
 from src.render.light_map import LightMap
 from src.render.screen_buffer import FOG_EXPLORED, FOG_UNEXPLORED
 from src.story.dialogues import get_dialogue
+from src.story.voices import voice_for_dialogue
+from src.ui.typewriter_dialogue import TypewriterDialogue
 from src.ui.character_sheet import CharacterSheet
 from src.ui.craft_station import CraftStation
 from src.ui.examine_panel import ExaminePanel
@@ -36,8 +38,7 @@ class OverworldScene:
         self.examine = ExaminePanel()
         self.tooltip = Tooltip()
         self.weather = PepelWeather(game.world_state.world_seed)
-        self.dialogue_lines: list[str] = []
-        self.dialogue_idx = 0
+        self.dialogue = TypewriterDialogue()
         self.dialogue_open = False
         self.dialogue_id = ""
         self.pending_battle: str | None = None
@@ -58,8 +59,10 @@ class OverworldScene:
             return max(MAP_VIEW_W, MAP_VIEW_H) + 4
         return 14
 
-    def update(self):
+    def update(self, dt_ms: int = 16):
         self.frame += 1
+        if self.dialogue_open:
+            self.dialogue.update(dt_ms, self.game.audio)
         layer = self.game.world_state.layer
         wx0 = self.player.x - MAP_VIEW_W // 2
         wy0 = self.player.y - MAP_VIEW_H // 2
@@ -156,9 +159,8 @@ class OverworldScene:
                 self.examine.close()
             return False
         if self.dialogue_open:
-            if inp.any_pressed(pygame.K_RETURN, pygame.K_SPACE, pygame.K_e):
-                self.dialogue_idx += 1
-                if self.dialogue_idx >= len(self.dialogue_lines):
+            if inp.confirm_pressed() or inp.any_key_pressed() or inp.mouse_left_clicked():
+                if self.dialogue.advance():
                     self.dialogue_open = False
             if inp.pressed(pygame.K_o):
                 aid = {"elder_intro": "elder", "whisper_companion": "whisper_companion"}.get(
@@ -287,8 +289,7 @@ class OverworldScene:
 
     def _open_dialogue(self, did: str):
         self.dialogue_id = did
-        self.dialogue_lines = get_dialogue(did)
-        self.dialogue_idx = 0
+        self.dialogue.open(get_dialogue(did), voice_for_dialogue(did))
         self.dialogue_open = True
 
     def _save_checkpoint(self):
@@ -389,9 +390,8 @@ class OverworldScene:
         self.examine.draw(buf)
         self.tooltip.draw(buf)
 
-        if self.dialogue_open and self.dialogue_idx < len(self.dialogue_lines):
-            buf.draw_box(10, SCREEN_H - 8, 70, 5, "ДИАЛОГ")
-            buf.draw_text(12, SCREEN_H - 6, self.dialogue_lines[self.dialogue_idx][:66], fg=COLOR_TEXT)
+        if self.dialogue_open and self.dialogue.active:
+            self.dialogue.draw_box(buf, 10, SCREEN_H - 8, 70, 5, title="ДИАЛОГ")
 
     @property
     def needs_battle(self) -> str | None:

@@ -237,11 +237,12 @@ class Game:
                 self._update_title()
                 self._draw_title()
             elif self.scene == "intro":
+                self.intro.update(dt_ms, self.audio)
                 if self.intro.handle_input(self.input):
                     self._start_transition("overworld")
                 self.intro.draw(self.buffer)
             elif self.scene == "overworld" and self.overworld:
-                self.overworld.update()
+                self.overworld.update(dt_ms)
                 self.music.on_weather(self.overworld.weather.active)
                 self.music.on_turn(self.world_state.turn_count)
                 if not self.pause.open and not self.help.open:

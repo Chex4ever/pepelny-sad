@@ -1,0 +1,12 @@
+{
+  "default_voice": "default",
+  "intro_voice": "elion",
+  "dialogue_voices": {
+    "elder_intro": "elder",
+    "ivy_crossing": "narrator",
+    "whisper_companion": "whisper",
+    "sorrow_companion": "sorrow",
+    "warden_mercy": "warden",
+    "warden_kill": "warden"
+  }
+}

@@ -60,8 +60,10 @@ def test_intro_skip_advances_lines():
     from tests.conftest import FakeInput
 
     intro = IntroScene()
+    intro.reset()
     inp = FakeInput(pressed={pygame.K_RETURN})
     for _ in range(len(INTRO_LINES)):
+        intro.writer.complete_line()
         if intro.handle_input(inp):
             break
     assert intro.done
@@ -72,9 +74,11 @@ def test_intro_accepts_mouse_click():
     from tests.conftest import FakeInput
 
     intro = IntroScene()
+    intro.reset()
     class ClickInput(FakeInput):
         def confirm_pressed(self):
             return True
 
+    intro.writer.complete_line()
     assert intro.handle_input(ClickInput()) is False
     assert intro.line_idx == 1
