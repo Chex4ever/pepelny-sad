@@ -33,7 +33,8 @@ def test_craft_station_craft_recipe(profile, world_state, screen_buffer):
     station.cursor = next(i for i, r in enumerate(visible) if r["id"] == "root_staff")
     station.draw(screen_buffer, profile, world_state, ExaminePanel())
     before = profile.inventory.count("root_fiber")
-    station.handle_input(
+    station.bind(profile, world_state)
+    station.handle_content_keys(
         FakeInput(pressed={pygame.K_RETURN}),
         profile,
         world_state,

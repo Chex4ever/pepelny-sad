@@ -8,7 +8,8 @@ import pygame
 from src.battle.battle_scene import BattleScene
 from src.core.scene_context import SceneContext
 from src.core.save_service import SaveService
-from src.story.narrative import ENDINGS, pick_ending
+from src.i18n import t
+from src.story.narrative import get_ending, pick_ending
 from src.world.dungeon_stitcher import ensure_dungeon
 from src.world.save import load_game, save_game
 
@@ -58,6 +59,16 @@ class SceneManager:
             self.game.scene = target_scene
             if target_scene == "intro":
                 self.game.intro.reset()
+            if target_scene == "overworld":
+                log = self.game.windows.get("log")
+                if log:
+                    log.show()
+                    if not log.lines:
+                        log.add(t("ui.log.welcome"))
+            if target_scene == "title":
+                log = self.game.windows.get("log")
+                if log:
+                    log.close()
             self.apply_pending_action()
             self.game.music.on_scene(self.game.scene)
             if self.game.overworld:
@@ -69,7 +80,7 @@ class SceneManager:
     def on_battle_done(self, result: str) -> None:
         if self.game.enemy_id_boss and result in ("kill", "spare"):
             self.game.world_state.boss_cleared = True
-            self.game.ending_data = ENDINGS[pick_ending(self.game.world_state, result)]
+            self.game.ending_data = get_ending(pick_ending(self.game.world_state, result))
             self.start_transition("ending")
         else:
             self.start_transition("overworld")
@@ -82,7 +93,7 @@ class SceneManager:
         elif action == "save":
             save_game(SaveService.serialize(self.game))
             if self.game.overworld:
-                self.game.overworld.log.add("Сохранено.")
+                self.game.overworld.log.add(t("ui.log.saved"))
         elif action == "save_quit":
             save_game(SaveService.serialize(self.game))
             self.game.running = False
@@ -111,28 +122,36 @@ class SceneManager:
 
         if inp.pressed_f1() and g.scene != "title":
             help_w.toggle()
+            if help_w.visible and getattr(g, "tutorial", None):
+                g.tutorial.notify_help_or_pause()
         if inp.pressed_f4() and g.scene != "title":
             debug_w.toggle()
+        opened_pause_this_frame = False
         if inp.pressed_escape():
             if help_w.visible:
                 help_w.close()
             elif debug_w.visible:
                 debug_w.close()
             elif pause.visible:
-                pause.close()
-                g.audio.resume_music()
+                if pause.confirm_quit:
+                    pause.confirm_quit = False
+                else:
+                    pause.close()
+                    g.audio.resume_music()
             elif g.windows.examine_open():
                 g.windows.close_examine()
             elif g.scene == "title":
                 g.running = False
             elif g.scene in ("overworld", "battle"):
                 pause.toggle()
-                if pause.visible:
-                    g.audio.pause_music()
-                else:
-                    g.audio.resume_music()
+                opened_pause_this_frame = True
+                g.audio.pause_music()
+                if getattr(g, "tutorial", None):
+                    g.tutorial.notify_help_or_pause()
 
-        pause_action = pause.handle_menu_input(inp)
+        pause_action = None
+        if pause.visible and not (opened_pause_this_frame and inp.pressed_escape()):
+            pause_action = pause.handle_menu_input(inp)
         if pause_action:
             self.handle_pause_action(pause_action)
 
@@ -142,6 +161,9 @@ class SceneManager:
         ui_blocked = pause.visible
 
         if g.scene == "title":
+            log = g.windows.get("log")
+            if log:
+                log.close()
             g._update_title()
             g._draw_title()
         elif g.scene == "intro":
@@ -151,6 +173,10 @@ class SceneManager:
             g.intro.draw(g.buffer)
         elif g.scene == "overworld" and g.overworld:
             g.overworld.update(dt_ms)
+            if getattr(g, "tutorial", None):
+                g.tutorial.update_frame()
+                if getattr(g, "tutorial_window", None):
+                    g.tutorial_window.set_text(g.tutorial.current_text())
             g.music.on_weather(g.overworld.weather.active)
             g.music.on_turn(g.world_state.turn_count)
             if not ui_blocked:

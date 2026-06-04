@@ -182,6 +182,15 @@ class InputState:
     def mouse_left_released(self) -> bool:
         return 1 in self.mouse_released
 
+    def mouse_middle_down(self) -> bool:
+        return 2 in self.mouse_pressed
+
+    def mouse_middle_held(self) -> bool:
+        return 2 in self.mouse_down
+
+    def mouse_middle_released(self) -> bool:
+        return 2 in self.mouse_released
+
     def pressed(self, key) -> bool:
         if key in self.keys_pressed:
             return True
