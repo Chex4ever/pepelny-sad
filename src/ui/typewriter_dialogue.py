@@ -27,14 +27,16 @@ class TypewriterDialogue:
         self.lines: list[str] = []
         self.line_idx = 0
         self.voice = "default"
+        self.speaker = ""
         self.active = False
         self._char_idx = 0
         self._timer_ms = 0.0
         self._pause_ms = 0.0
         self._audio = None
 
-    def open(self, lines: list[str], voice: str):
-        self.lines = [ln for ln in lines if ln]
+    def open(self, lines: list[str], voice: str, speaker: str = ""):
+        self.speaker = speaker or ""
+        self.lines = [_strip_speaker_prefix(ln, self.speaker) for ln in lines if ln]
         self.line_idx = 0
         self.voice = voice or "default"
         self.active = bool(self.lines)
@@ -43,6 +45,7 @@ class TypewriterDialogue:
     def close(self):
         self.active = False
         self.lines = []
+        self.speaker = ""
 
     def _reset_line(self):
         self._char_idx = 0
@@ -121,14 +124,15 @@ class TypewriterDialogue:
         w: int,
         h: int,
         *,
-        title: str = "ДИАЛОГ",
+        title: str | None = None,
         show_prev_lines: int = 0,
         prev_x: int | None = None,
         prev_y_start: int | None = None,
     ):
         if not self.active:
             return
-        buf.draw_box(x, y, w, h, title=title, fg=COLOR_UI_BORDER, bg=COLOR_UI_BG)
+        box_title = title if title is not None else (self.speaker or "...")
+        buf.draw_box(x, y, w, h, title=box_title, fg=COLOR_UI_BORDER, bg=COLOR_UI_BG)
         ty = y + 2
         if show_prev_lines and prev_x is not None and prev_y_start is not None:
             start = max(0, self.line_idx - show_prev_lines)
@@ -136,3 +140,12 @@ class TypewriterDialogue:
                 buf.draw_text(prev_x, prev_y_start + (i - start), self.lines[i][: w - 4], fg=COLOR_TEXT)
         fg = COLOR_HIGHLIGHT if not self.line_complete() else COLOR_TEXT
         buf.draw_text(x + 2, ty, self.visible_text()[: w - 4], fg=fg)
+
+
+def _strip_speaker_prefix(line: str, speaker: str) -> str:
+    if not speaker:
+        return line
+    prefix = f"{speaker}:"
+    if line.startswith(prefix):
+        return line[len(prefix) :].lstrip()
+    return line

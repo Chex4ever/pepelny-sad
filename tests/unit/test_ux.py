@@ -56,13 +56,13 @@ def test_title_phases_progress():
 
 
 def test_intro_skip_advances_lines():
-    from src.story.intro import INTRO_LINES, IntroScene
+    from src.story.intro import IntroScene
     from tests.conftest import FakeInput
 
     intro = IntroScene()
     intro.reset()
     inp = FakeInput(pressed={pygame.K_RETURN})
-    for _ in range(len(INTRO_LINES)):
+    for _ in range(len(intro._lines())):
         intro.writer.complete_line()
         if intro.handle_input(inp):
             break
