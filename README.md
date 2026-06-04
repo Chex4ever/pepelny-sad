@@ -17,6 +17,15 @@ python main.py
 
 Python 3.11+, Pygame 2.5+. Для CI и сборки релизов используется Python **3.12**.
 
+Переменные окружения (опционально):
+
+| Переменная | Значение | Описание |
+|------------|----------|----------|
+| `PEPELNY_RENDER` | `iso` (по умолчанию) / `classic` | Изометрическая карта (Stone Story style) или 1 символ на тайл |
+| `PEPELNY_LANG` | `ru` / `en` | Язык интерфейса и текстов |
+
+Прототипы тайлов: `python tools/generate_tile_stencils.py grass_dry , --size 2`
+
 ### Windows x64
 
 Скачайте `pepelny-sad-{version}-win-x64-setup.exe` из [Releases](https://github.com/Chex4ever/pepelny-sad/releases) и запустите установщик. Игра ставится в `%ProgramFiles%\Пепельный Сад\`.

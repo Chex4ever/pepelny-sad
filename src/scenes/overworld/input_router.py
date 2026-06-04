@@ -4,7 +4,8 @@ from __future__ import annotations
 import pygame
 
 from src.audio.tile_sounds import resolve_footstep
-from src.constants import CELL_H, CELL_W, MAP_ORIGIN_Y
+from src.constants import MAP_ORIGIN_Y
+from src.render.viewport import map_pan_cell_h, map_pan_cell_w
 from src.world.companions import companion_pos_for_player
 from src.world.save import load_game, save_game
 from src.world.tile_entities import resolve_companion, resolve_player, resolve_world_cell
@@ -65,7 +66,12 @@ class OverworldInputRouter:
         total_dx = inp.mouse_pos[0] - self._drag_start[0]
         total_dy = inp.mouse_pos[1] - self._drag_start[1]
         ow.camera.pan_from_drag(
-            total_dx, total_dy, CELL_W, CELL_H, self._pan_base[0], self._pan_base[1]
+            total_dx,
+            total_dy,
+            map_pan_cell_w(),
+            map_pan_cell_h(),
+            self._pan_base[0],
+            self._pan_base[1],
         )
 
     def _pointer_over_window(self, inp) -> bool:

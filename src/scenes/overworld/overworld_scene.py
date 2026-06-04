@@ -1,7 +1,8 @@
 """Main overworld exploration scene (orchestrator)."""
 from __future__ import annotations
 
-from src.constants import MAP_ORIGIN_Y, MAP_VIEW_H, MAP_VIEW_W, SCREEN_H
+from src.constants import MAP_ORIGIN_Y, SCREEN_H
+from src.render.viewport import map_view_h, map_view_w
 from src.core.camera import Camera
 from src.overworld.player import OverworldPlayer
 from src.scenes.overworld.fov_controller import FovController
@@ -22,7 +23,7 @@ class OverworldScene:
     def __init__(self, game):
         self.game = game
         self.player = OverworldPlayer(x=20, y=24)
-        self.camera = Camera(MAP_VIEW_W, MAP_VIEW_H)
+        self.camera = Camera(map_view_w(), map_view_h())
         self.weather = PepelWeather(game.world_state.world_seed)
         self.dialogue = TypewriterDialogue()
         self.dialogue_open = False

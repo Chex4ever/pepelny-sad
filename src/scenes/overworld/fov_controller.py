@@ -1,7 +1,7 @@
 """FOV and ambient updates for overworld."""
 from __future__ import annotations
 
-from src.constants import MAP_VIEW_H, MAP_VIEW_W
+from src.render.viewport import map_view_h, map_view_w
 from src.overworld.fov import cast_los_fov
 
 
@@ -19,7 +19,7 @@ class FovController:
     def fov_radius(self) -> int:
         layer = self.scene.game.world_state.layer
         if layer == "surface":
-            return max(MAP_VIEW_W, MAP_VIEW_H) + 4
+            return max(map_view_w(), map_view_h()) + 4
         return 14
 
     def update(self, wx0: int, wy0: int) -> set[tuple[int, int]]:
@@ -37,9 +37,9 @@ class FovController:
             radius,
             tile_ch,
             min_x=wx0 - 1,
-            max_x=wx0 + MAP_VIEW_W,
+            max_x=wx0 + map_view_w(),
             min_y=wy0 - 1,
-            max_y=wy0 + MAP_VIEW_H,
+            max_y=wy0 + map_view_h(),
         )
         for wx, wy in visible:
             wm.mark_explored(wx, wy, layer)

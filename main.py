@@ -23,8 +23,10 @@ from src.constants import init_paths
 init_paths(os.path.dirname(os.path.abspath(__file__)))
 
 from src.i18n import init_locale_from_env
+from src.render.render_mode import init_render_mode_from_env
 
 init_locale_from_env()
+init_render_mode_from_env()
 
 from src.game import main
 

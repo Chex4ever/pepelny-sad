@@ -9,6 +9,7 @@ import pytest
 # Headless pygame before any game imports.
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+os.environ.setdefault("PEPELNY_RENDER", "classic")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
