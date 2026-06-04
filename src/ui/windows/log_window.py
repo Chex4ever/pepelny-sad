@@ -11,7 +11,7 @@ class LogWindow(ModalWindow):
     blocks_world_input = False
 
     def __init__(self):
-        super().__init__("LOG", x=72, y=1, w=26, h=14, visible=True)
+        super().__init__("LOG", x=72, y=1, w=26, h=14, visible=False)
         self.lines: list[str] = []
 
     def add(self, msg: str) -> None:

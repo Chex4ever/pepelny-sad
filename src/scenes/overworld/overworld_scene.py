@@ -103,7 +103,12 @@ class OverworldScene:
             self.input_router.update_mouse_tooltip(inp)
         wx0, wy0 = self.camera.view_origin()
         self.map_renderer.draw(buf, wx0, wy0)
-        self.status.set_status(self.game.world_state.layer, self.game.world_state.turn_count)
+        self.status.set_status(
+            self.game.world_state.layer,
+            self.game.world_state.turn_count,
+            pan_x=self.camera.pan_x,
+            pan_y=self.camera.pan_y,
+        )
         self.status.draw(buf)
         if self.sheet:
             self.sheet.bind_profile(self.game.profile)
@@ -111,7 +116,7 @@ class OverworldScene:
             self.craft.bind(self.game.profile, self.game.world_state)
         self.game.windows.draw(buf)
         if self.dialogue_open and self.dialogue.active:
-            self.dialogue.draw_box(buf, 10, SCREEN_H - 8, 70, 5, title="ДИАЛОГ")
+            self.dialogue.draw_box(buf, 10, SCREEN_H - 8, 70, 5)
 
     @property
     def needs_battle(self) -> str | None:

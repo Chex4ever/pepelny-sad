@@ -10,6 +10,7 @@ from src.audio.ambient_controller import AmbientController
 from src.audio.audio_manager import AudioManager
 from src.audio.music_controller import MusicController
 from src.constants import CELL_H, CELL_W, FPS, SCREEN_H, SCREEN_W, init_paths
+from src.i18n import init_locale_from_env, t
 from src.core.save_service import SaveService
 from src.core.scene_manager import SceneManager
 from src.data.art_init import ensure_art_files
@@ -28,6 +29,8 @@ from src.ui.windows.examine_window import ExamineWindow
 from src.ui.windows.help_window import HelpWindow
 from src.ui.windows.log_window import LogWindow
 from src.ui.windows.pause_window import PauseWindow
+from src.ui.tutorial.tutorial_controller import TutorialController
+from src.ui.windows.tutorial_window import TutorialWindow
 from src.ui.windows.window_manager import WindowManager
 from src.world.save import load_game
 from src.world.world_map import WorldMap
@@ -39,6 +42,7 @@ class Game:
     def __init__(self):
         base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         init_paths(base)
+        init_locale_from_env()
         ensure_art_files()
         pygame.init()
         pygame.display.set_caption(f"Пепельный Сад v{get_version()}")
@@ -74,11 +78,14 @@ class Game:
             HelpWindow(),
             DebugWindow(),
             PauseWindow(),
+            TutorialWindow(),
         ):
             self.windows.register(w)
         self.pause = self.windows.get("pause")
         self.help = self.windows.get("help")
         self.debug = self.windows.get("debug")
+        self.tutorial = TutorialController(self)
+        self.tutorial_window = self.windows.get("tutorial")
         self.transition = TransitionManager()
         self._pending_action: str | None = None
         self._fade_overlay = pygame.Surface(
@@ -108,6 +115,7 @@ class Game:
 
     def new_game(self, seed: int | None = None):
         self.world_state = WorldState(world_seed=seed or random.randint(1, 99999))
+        self.world_state.tutorial_step = 0
         self.profile = PlayerProfile()
         self.profile.inventory.add("grey_herb", 3, 20)
         self.profile.inventory.add("root_fiber", 2, 20)
@@ -137,8 +145,6 @@ class Game:
         self.windows.close_examine()
 
     def _render_frame(self):
-        if self.scene != "overworld":
-            self.windows.draw(self.buffer)
         self.pause.draw(self.buffer)
         self.help.draw(self.buffer)
         self.debug.draw(self.buffer)
@@ -160,6 +166,9 @@ class Game:
             if data:
                 self.restore_state(data)
                 self.scene = "overworld"
+                log = self.windows.get("log")
+                if log:
+                    log.show()
                 self.music.on_scene("overworld")
                 self.music.on_layer(self.world_state.layer)
 
@@ -177,7 +186,7 @@ class Game:
             self.buffer.draw_text(30, 8, self.ending_data["title"], fg=COLOR_HIGHLIGHT)
             for i, line in enumerate(self.ending_data["lines"]):
                 self.buffer.draw_text(20, 14 + i, line, fg=COLOR_TEXT)
-        self.buffer.draw_text(28, 28, "Enter — в меню", fg=COLOR_TEXT)
+        self.buffer.draw_text(28, 28, t("ending.menu_hint"), fg=COLOR_TEXT)
 
 
 def main():

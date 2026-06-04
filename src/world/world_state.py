@@ -20,6 +20,7 @@ class WorldState:
     turn_count: int = 0
     checkpoint: dict | None = None
     defeated_battles: set = field(default_factory=set)
+    tutorial_step: int = 0
 
     def add_discovered_recipe(self, recipe_id: str):
         self.discovered_recipes.add(recipe_id)
