@@ -89,14 +89,6 @@ class CraftWindow(ModalWindow):
                 log.add("Не хватает материалов.")
         return True
 
-    def handle_input(self, inp, profile, world_state, examine_panel, log, audio=None) -> bool:
-        if not self.visible:
-            return False
-        if self.handle_keys(inp):
-            return True
-        self.handle_content_keys(inp, profile, world_state, examine_panel, log, audio)
-        return True
-
     def bind(self, profile, world_state) -> None:
         self._profile = profile
         self._world_state = world_state

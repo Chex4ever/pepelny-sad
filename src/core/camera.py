@@ -3,10 +3,10 @@ from __future__ import annotations
 
 
 class Camera:
-    def __init__(self, view_w: int, view_h: int, pan_limit: int = 15):
+    def __init__(self, view_w: int, view_h: int, pan_limit: int | None = None):
         self.view_w = view_w
         self.view_h = view_h
-        self.pan_limit = pan_limit
+        self.pan_limit = pan_limit if pan_limit is not None else max(view_w, view_h) // 3
         self._center_x = 0
         self._center_y = 0
         self.pan_x = 0
@@ -21,9 +21,31 @@ class Camera:
         wy0 = self._center_y - self.view_h // 2 + self.pan_y
         return wx0, wy0
 
+    def set_pan(self, px: int, py: int) -> None:
+        self.pan_x = max(-self.pan_limit, min(self.pan_limit, px))
+        self.pan_y = max(-self.pan_limit, min(self.pan_limit, py))
+
     def pan_by(self, dx: int, dy: int) -> None:
-        self.pan_x = max(-self.pan_limit, min(self.pan_limit, self.pan_x + dx))
-        self.pan_y = max(-self.pan_limit, min(self.pan_limit, self.pan_y + dy))
+        self.set_pan(self.pan_x + dx, self.pan_y + dy)
+
+    def pan_from_drag(
+        self,
+        total_dx_px: int,
+        total_dy_px: int,
+        cell_w: int,
+        cell_h: int,
+        base_pan_x: int,
+        base_pan_y: int,
+    ) -> None:
+        px = base_pan_x - round(total_dx_px / cell_w)
+        py = base_pan_y - round(total_dy_px / cell_h)
+        self.set_pan(px, py)
+
+    def is_panned(self) -> bool:
+        return self.pan_x != 0 or self.pan_y != 0
+
+    def is_at_limit(self) -> bool:
+        return abs(self.pan_x) >= self.pan_limit or abs(self.pan_y) >= self.pan_limit
 
     def reset_pan(self) -> None:
         self.pan_x = 0

@@ -54,6 +54,9 @@ class WindowManager:
         if ex:
             ex.close()
 
+    def pointer_over_visible(self, gx: int, gy: int) -> bool:
+        return any(w.visible and w.contains(gx, gy) for w in self._windows)
+
     def handle_input(self, inp: InputState) -> bool:
         gx, gy = inp.mouse_grid()
         if inp.mouse_left_down():
@@ -68,9 +71,22 @@ class WindowManager:
                 return True
             if w.handle_keys(inp):
                 return True
+        if self.pointer_over_visible(gx, gy) and _mouse_buttons_active(inp):
+            return True
         return False
 
     def draw(self, buf: ScreenBuffer) -> None:
         for w in self._windows:
             if w.visible:
                 w.draw(buf)
+
+
+def _mouse_buttons_active(inp: InputState) -> bool:
+    return (
+        inp.mouse_left_down()
+        or inp.mouse_left_held()
+        or inp.mouse_left_released()
+        or inp.mouse_middle_down()
+        or inp.mouse_middle_held()
+        or inp.mouse_middle_released()
+    )

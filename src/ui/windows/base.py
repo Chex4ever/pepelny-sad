@@ -138,7 +138,16 @@ class ModalWindow:
             self.x = max(0, buf_safe_max_x(self.w, ngx - self._drag_off[0]))
             self.y = max(0, buf_safe_max_y(self.h, ngy - self._drag_off[1]))
             return True
-        return self.contains(gx, gy)
+        if self.contains(gx, gy) and (
+            inp.mouse_left_down()
+            or inp.mouse_left_held()
+            or inp.mouse_left_released()
+            or inp.mouse_middle_down()
+            or inp.mouse_middle_held()
+            or inp.mouse_middle_released()
+        ):
+            return True
+        return False
 
     def handle_keys(self, inp) -> bool:
         return False
