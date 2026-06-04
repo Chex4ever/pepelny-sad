@@ -12,10 +12,18 @@ def test_open_character_sheet(game):
 
 
 @pytest.mark.integration
+def test_sheet_draws_material_in_inventory(game, screen_buffer):
+    game.overworld.sheet.open = True
+    game.overworld.sheet.bind_profile(game.profile)
+    game.overworld.sheet.draw(screen_buffer, game.profile)
+
+
+@pytest.mark.integration
 def test_examine_elion_from_sheet(game, screen_buffer):
     game.overworld.sheet.open = True
     game.overworld.sheet.mode = "equip"
-    game.overworld.sheet.handle_input(
+    game.overworld.sheet.bind_profile(game.profile)
+    game.overworld.sheet.handle_content_keys(
         FakeInput(pressed={pygame.K_o}),
         game.profile,
         game.overworld.examine,

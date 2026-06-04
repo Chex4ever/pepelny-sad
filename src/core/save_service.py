@@ -28,6 +28,7 @@ class SaveService:
             "dungeon_entered": game.world_state.dungeon_entered,
             "boss_cleared": game.world_state.boss_cleared,
             "defeated_battles": list(game.world_state.defeated_battles),
+            "tutorial_step": game.world_state.tutorial_step,
             "dungeon_explored": list(game.world_map.dungeon_explored),
             "hp": game.profile.hp,
             "inventory": inv,
@@ -52,6 +53,7 @@ class SaveService:
         game.world_state.dungeon_entered = data.get("dungeon_entered", False)
         game.world_state.boss_cleared = data.get("boss_cleared", False)
         game.world_state.defeated_battles = set(tuple(x) for x in data.get("defeated_battles", []))
+        game.world_state.tutorial_step = data.get("tutorial_step", -1)
         game.world_map = WorldMap(game.world_state.world_seed)
         game.world_map.dungeon_explored = set(tuple(x) for x in data.get("dungeon_explored", []))
         game.profile = PlayerProfile()

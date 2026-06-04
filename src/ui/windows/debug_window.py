@@ -24,9 +24,6 @@ class DebugWindow(ModalWindow):
             self.show()
 
     def handle_keys(self, inp) -> bool:
-        if self.visible and (inp.pressed_f4() or inp.pressed_escape()):
-            self.close()
-            return True
         return False
 
     def draw_content(self, buf: ScreenBuffer) -> None:

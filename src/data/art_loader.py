@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -59,10 +60,11 @@ def load_art(art_id: str) -> ArtEntry:
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:
                 content = f.read()
-            parts = content.split("---")
-            art_lines = [ln.rstrip() for ln in parts[0].strip().splitlines() if ln.strip() or ln == ""]
+            parts = re.split(r"\n---\n", content, maxsplit=1)
+            art_block = parts[0].strip("\n")
+            art_lines = [ln.rstrip() for ln in art_block.splitlines()]
             text_lines = []
             if len(parts) > 1:
                 text_lines = [ln.strip() for ln in parts[1].strip().splitlines() if ln.strip()]
-            return ArtEntry(art=art_lines[:12], examine_text=text_lines[:5])
+            return ArtEntry(art=art_lines[:36], examine_text=text_lines[:6])
     return ArtEntry(art=["  ?  ", " /|\\ ", " / \\ "], examine_text=[f"({art_id})"])
