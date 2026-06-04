@@ -1,0 +1,177 @@
+{
+  "ui": {
+    "help": {
+      "title": "HELP F1",
+      "close": "F1 or Esc — close",
+      "lines": [
+        "WASD — move",
+        "E — interact / gather",
+        "Tab — character",
+        "LMB drag — pan · R — center on hero",
+        "LMB click — examine · O — self",
+        "F5 — save · F9 — load",
+        "F1 — this help · F4 — debug",
+        "Esc — pause · close window",
+        "Battle: arrows + Enter, dodge WASD",
+        "Fight QTE: Space",
+        "Windows: drag title, − minimize, × close",
+        "Tutorial hints — bottom of screen"
+      ]
+    },
+    "pause": {
+      "title": "PAUSE",
+      "confirm_title": "CONFIRM",
+      "main_menu": "Main menu",
+      "save": "Save",
+      "save_quit": "Save and quit",
+      "quit": "Quit without saving",
+      "confirm_quit": "Quit without saving?",
+      "confirm_yes": "Enter — yes   Esc — no",
+      "close": "Esc — close"
+    },
+    "tutorial": {
+      "title": "TUTORIAL",
+      "footer": "Hints disappear after tutorial",
+      "steps": [
+        "Welcome to Ash Garden. WASD — move.",
+        "Hold LMB and drag the map. R — recenter on hero.",
+        "Short LMB on tile or O — examine.",
+        "Tab or LMB on Elion — character sheet.",
+        "E — interact: gather, NPC, station.",
+        "F1 — help. Esc — pause."
+      ]
+    },
+    "log": {
+      "welcome": "Hints at the bottom. F1 — all keys.",
+      "dialogue_advance": "Enter / click — next line",
+      "saved": "Saved.",
+      "saved_f5": "Saved (F5).",
+      "loaded": "Loaded."
+    },
+    "status": {
+      "unknown_land": "Unknown land",
+      "memory_place": "Memory of a place",
+      "camera_pan": "camera ({x:+d},{y:+d}) · R center"
+    },
+    "examine": {
+      "title": "EXAMINE",
+      "close": "Esc — close"
+    }
+  },
+  "dialogue": {
+    "speaker": {
+      "elder": "Ash Elder",
+      "whisper": "Whisper",
+      "sorrow": "Sorrow Spark",
+      "warden": "Warden",
+      "narrator": "..."
+    },
+    "elder_intro": {
+      "lines": [
+        "Elion... the garden withered long ago.",
+        "Listen to the wind — it remembers Lyra better than we do.",
+        "Go east. Where the lantern broke, Sorrow burns."
+      ]
+    },
+    "ivy_crossing": {
+      "lines": [
+        "The mine calls downward. Ash Garden waits.",
+        "F5 — save at the crossroads."
+      ]
+    },
+    "whisper_companion": {
+      "lines": [
+        "I can weave something simple for you.",
+        "E — open the mobile forge."
+      ]
+    },
+    "sorrow_companion": {
+      "lines": [
+        "Stars... I see them through the ash.",
+        "Shards shine brighter near me."
+      ]
+    },
+    "warden_mercy": {
+      "lines": [
+        "Let her go. Ash will become a garden again.",
+        "Lyra did not ask you to hold the pain."
+      ]
+    },
+    "warden_kill": {
+      "lines": [
+        "Then take the shard. Let it cut you, not her."
+      ]
+    }
+  },
+  "intro": {
+    "title": " ASH GARDEN ",
+    "lines": [
+      "Elion walked the Ash Steppes.",
+      "He sought Lyra's last spark —",
+      "the one that once warmed the garden.",
+      "Wind whispered names. Ash remembered.",
+      "Listen. Look. Do not rush to fight."
+    ],
+    "hint": "Enter / click — next · Space — skip"
+  },
+  "ending": {
+    "mercy": {
+      "title": "Ash Dawn",
+      "lines": [
+        "Elion releases Lyra's spark.",
+        "Ash settles softly, like first snow.",
+        "On grey grass — a green sprout."
+      ]
+    },
+    "kill": {
+      "title": "Shard in Hand",
+      "lines": [
+        "Elion takes memory by force.",
+        "The garden is silent. Stars do not return.",
+        "But he walks on — alone."
+      ]
+    },
+    "menu_hint": "Enter — menu"
+  },
+  "character": {
+    "elion": "Elion"
+  },
+  "item": {
+    "grey_tincture": {"name": "Grey Tincture"},
+    "woven_pack": {"name": "Woven Pack"},
+    "ash_blade": {"name": "Ash Blade"},
+    "root_staff": {"name": "Root Staff"},
+    "root_greaves": {"name": "Root Greaves"},
+    "ash_tunic": {"name": "Ash Tunic"},
+    "star_amulet": {"name": "Star Amulet"},
+    "pepel_lantern": {"name": "Ash Lantern"},
+    "memory_shard": {"name": "Memory Shard"}
+  },
+  "material": {
+    "grey_herb": {"name": "Grey Herb"},
+    "root_fiber": {"name": "Root Fiber"},
+    "ash_clump": {"name": "Ash Clump"},
+    "star_shard": {"name": "Star Shard"},
+    "echo_dust": {"name": "Echo Dust"},
+    "lantern_glass": {"name": "Lantern Glass"}
+  },
+  "enemy": {
+    "whisper": {"name": "Whisper"},
+    "sorrow": {"name": "Sorrow Spark"},
+    "warden": {"name": "Root Warden"}
+  },
+  "tile": {
+    "grey_herb": "Grey herb",
+    "root_fiber": "Root fiber",
+    "star_shard": "Star shard",
+    "ash_clump": "Ash clump",
+    "ash_forge": "Ash Forge",
+    "loom": "Loom",
+    "dungeon_down": "Descend",
+    "dungeon_up": "Surface exit",
+    "elder": "Ash Elder",
+    "withered_tree": "Withered tree",
+    "ash_steppe": "Ash steppe",
+    "torch": "Torch"
+  }
+}

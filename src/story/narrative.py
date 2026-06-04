@@ -1,24 +1,22 @@
 """Narrative flags and endings."""
 from __future__ import annotations
 
-ENDINGS = {
-    "mercy": {
-        "title": "Пепельный Рассвет",
-        "lines": [
-            "Элион отпускает искру Лиры.",
-            "Пепел оседает мягко, как первый снег.",
-            "На серой траве — зелёный росток.",
-        ],
-    },
-    "kill": {
-        "title": "Осколок в ладони",
-        "lines": [
-            "Элион забирает память силой.",
-            "Сад молчит. Звёзды не возвращаются.",
-            "Но он идёт дальше — один.",
-        ],
-    },
-}
+from src.i18n import t, t_list
+
+
+def get_ending(ending_id: str) -> dict:
+    return {
+        "title": t(f"ending.{ending_id}.title"),
+        "lines": t_list(f"ending.{ending_id}.lines"),
+    }
+
+
+class _EndingsAccessor:
+    def __getitem__(self, item: str) -> dict:
+        return get_ending(item)
+
+
+ENDINGS = _EndingsAccessor()
 
 
 def pick_ending(world_state, battle_result: str) -> str:
