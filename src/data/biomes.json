@@ -1,6 +1,7 @@
 {
   "meadow": {
     "floor": ".",
+    "stencil_id": "grass",
     "fg": [100, 130, 90],
     "bg": [30, 45, 30],
     "herb_chance": 0.08,
@@ -8,6 +9,7 @@
   },
   "ashen_forest": {
     "floor": ",",
+    "stencil_id": "grass_dry",
     "fg": [90, 90, 85],
     "bg": [25, 28, 25],
     "herb_chance": 0.05,
@@ -16,6 +18,7 @@
   },
   "ridge": {
     "floor": ":",
+    "stencil_id": "ridge",
     "fg": [110, 100, 90],
     "bg": [35, 32, 30],
     "herb_chance": 0.02,
@@ -23,6 +26,7 @@
   },
   "ruins_edge": {
     "floor": "+",
+    "stencil_id": "ruins",
     "fg": [80, 85, 100],
     "bg": [22, 24, 32],
     "herb_chance": 0.01,

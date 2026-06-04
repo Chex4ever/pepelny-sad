@@ -131,6 +131,10 @@ class InputState:
         camera_y: int | None = None,
         map_origin_y: int | None = None,
     ) -> tuple[int, int] | None:
+        from src.render.render_mode import is_iso
+
+        if is_iso():
+            return self._mouse_world_iso(camera, camera_y)
         from src.constants import MAP_ORIGIN_Y, MAP_VIEW_H, MAP_VIEW_W
 
         if isinstance(camera, int) and camera_y is not None:
@@ -149,7 +153,29 @@ class InputState:
             return None
         return wx0 + gx, wy0 + local_y
 
+    def _mouse_world_iso(self, camera, camera_y: int | None) -> tuple[int, int] | None:
+        from src.render.iso_projector import IsoProjector
+        from src.render.viewport import map_view_h, map_view_w
+
+        if isinstance(camera, int) and camera_y is not None:
+            wx0, wy0 = camera, camera_y
+        elif hasattr(camera, "view_origin"):
+            wx0, wy0 = camera.view_origin()
+        else:
+            wx0, wy0 = camera
+        gx, gy = self.mouse_grid()
+        if not self.mouse_on_map():
+            return None
+        return IsoProjector().screen_to_world(gx, gy, wx0, wy0, map_view_w(), map_view_h())
+
     def mouse_on_map(self, map_origin_y: int | None = None) -> bool:
+        from src.render.render_mode import is_iso
+
+        if is_iso():
+            from src.constants import ISO_SKY_ROWS, SCREEN_W
+
+            gx, gy = self.mouse_grid()
+            return ISO_SKY_ROWS <= gy and 0 <= gx < SCREEN_W
         from src.constants import MAP_ORIGIN_Y, MAP_VIEW_H, MAP_VIEW_W
 
         if map_origin_y is None:
