@@ -44,7 +44,12 @@ class MapRenderer:
         for vy in range(vh):
             for vx in range(vw):
                 wx, wy = wx0 + vx, wy0 + vy
-                ch, _, _ = wm.get_tile(wx, wy, layer)
+                if layer == "dungeon":
+                    ch, _, _ = wm.get_tile(wx, wy, layer)
+                else:
+                    cx, cy, lx, ly = wm.world_to_chunk(wx, wy)
+                    chunk = wm.chunks.get((cx, cy))
+                    ch = chunk.get(lx, ly) if chunk and chunk.in_bounds(lx, ly) else "."
                 if ch in "li":
                     lm.add_source(vx, vy, 4.5, 0.55)
         px = ow.player.x - wx0
@@ -55,7 +60,8 @@ class MapRenderer:
         if "sorrow_companion" in ow.game.world_state.companions:
             cx, cy = companion_pos_for_player(ow.player.x, ow.player.y)
             lm.add_source(cx - wx0, cy - wy0, 3.0, 0.25)
-        lm.blur_3x3()
+        if layer == "dungeon":
+            lm.blur_3x3()
         return lm
 
     def draw(self, buf, wx0: int, wy0: int) -> None:
@@ -63,6 +69,9 @@ class MapRenderer:
             self._draw_iso(buf, wx0, wy0)
         else:
             self._draw_classic(buf, wx0, wy0)
+
+    def _perf(self):
+        return self.scene.game.perf
 
     def _draw_sky(self, buf, layer: str, turn_count: int, ambient: float) -> None:
         if layer != "surface":
@@ -143,63 +152,98 @@ class MapRenderer:
         vw, vh = map_view_w(), map_view_h()
         light_map = self.build_light_map(wx0, wy0, ambient)
         projector = self._projector
+        wm = ow.game.world_map
 
-        tiles: list[tuple[int, int, int, str, tuple, tuple, float, int]] = []
+        # sort_key, wx, wy, z_m, stencil_id, fg, bg, light, fog
+        draw_queue: list[tuple] = []
+
         for vy in range(vh):
             for vx in range(vw):
                 wx, wy = wx0 + vx, wy0 + vy
                 state = visibility_state(wx, wy, ow.visible, ow._is_explored)
                 if state == UNEXPLORED:
                     continue
-                ch, fg, bg = ow.game.world_map.get_tile(wx, wy, layer)
+                light = light_map.get(vx, vy)
+                fog = FOG_EXPLORED if state == EXPLORED else 0
+
                 if layer == "dungeon":
+                    ch, fg, bg = wm.get_tile(wx, wy, layer)
                     ch, override = reskin_char(
                         ch, ow.game.world_state.spare_count, ow.game.world_state.kill_count
                     )
                     if override:
                         fg = override
-                ch = filter_tile_char(ch, state)
-                if ch is None:
+                    ch = filter_tile_char(ch, state)
+                    if ch is None:
+                        continue
+                    if ch in "li":
+                        light *= torch_flicker(ow.frame, wx + wy)
+                    sid = stencil_id_for_char(ch, layer, fg, bg)
+                    draw_queue.append((wx + wy, wx, wy, 0.0, sid, fg, bg, light, fog))
                     continue
-                light = light_map.get(vx, vy)
-                draw_ch = ch
-                if ch in "li":
-                    light *= torch_flicker(ow.frame, wx + wy)
-                    draw_ch = "l"
-                if has_service(ow.game.world_state.companions, "shard_ping") and ch == "*" and state == VISIBLE:
-                    light = max(light, 1.2)
-                fog = FOG_EXPLORED if state == EXPLORED else 0
-                sid = stencil_id_for_char(draw_ch, layer, fg, bg)
-                tiles.append((wx + wy, wx, wy, sid, fg, bg, light, fog))
 
-        tiles.sort(key=lambda t: t[0])
+                col = wm.get_column(wx, wy, layer)
+                draw_queue.append(
+                    (
+                        wx + wy,
+                        wx,
+                        wy,
+                        col.floor_z,
+                        col.floor_stencil_id,
+                        col.fg,
+                        col.bg,
+                        light,
+                        fog,
+                    )
+                )
+                for solid in col.solids:
+                    if not solid.stencil_id:
+                        continue
+                    z = col.floor_z + solid.z_min
+                    draw_queue.append(
+                        (
+                            wx + wy + int(z * 10),
+                            wx,
+                            wy,
+                            z,
+                            solid.stencil_id,
+                            col.fg,
+                            col.bg,
+                            light,
+                            fog,
+                        )
+                    )
 
-        for _, wx, wy, sid, fg, bg, light, fog in tiles:
-            anchor_x, anchor_y = projector.world_to_screen(wx, wy)
-            if not buf.in_bounds(anchor_x, anchor_y):
+        self._perf().counter("draw_queue", len(draw_queue))
+        draw_queue.sort(key=lambda t: (t[0], t[3]))
+
+        for _, wx, wy, z_m, sid, fg, bg, light, fog in draw_queue:
+            ax, ay = projector.world_to_screen(wx, wy, z_m)
+            if not buf.in_bounds(ax, ay):
                 continue
             stencil = load_tile_stencil(sid)
-            stamp(buf, anchor_x, anchor_y, stencil, fg=fg, bg=bg, light=light, fog=fog)
+            stamp(buf, ax, ay, stencil, fg=fg, bg=bg, light=light, fog=fog)
+            self._perf().counter("stamp")
 
-        # Fog unexplored tiles in view (stencil-sized footprint)
         for vy in range(vh):
             for vx in range(vw):
                 wx, wy = wx0 + vx, wy0 + vy
                 if visibility_state(wx, wy, ow.visible, ow._is_explored) != UNEXPLORED:
                     continue
                 ax, ay = projector.world_to_screen(wx, wy)
-                for dy in (-3, -2, -1, 0):
-                    for dx in (-3, -2, -1, 0, 1, 2, 3):
-                        buf.set_fog(ax + dx, ay + dy, FOG_UNEXPLORED)
+                buf.set_fog(ax, ay, FOG_UNEXPLORED)
+                buf.set_fog(ax + 1, ay, FOG_UNEXPLORED)
+                buf.set_fog(ax - 1, ay, FOG_UNEXPLORED)
+                buf.set_fog(ax, ay - 1, FOG_UNEXPLORED)
 
-        player_sprite = load_sprite("player")
-        pax, pay = projector.world_to_screen(ow.player.x, ow.player.y)
-        stamp(buf, pax, pay, player_sprite, light=1.0)
+        pz = wm.get_column(ow.player.x, ow.player.y, layer).floor_z
+        pax, pay = projector.world_to_screen(ow.player.x, ow.player.y, pz)
+        stamp(buf, pax, pay, load_sprite("player"), light=1.0)
 
         for cid in ow.game.world_state.companions:
             cx, cy = companion_pos_for_player(ow.player.x, ow.player.y)
             if (cx, cy) not in ow.visible:
                 continue
-            cax, cay = projector.world_to_screen(cx, cy)
-            companion_sprite = load_sprite("companion")
-            stamp(buf, cax, cay, companion_sprite, fg=(150, 200, 180), light=1.0)
+            cz = wm.get_column(cx, cy, layer).floor_z
+            cax, cay = projector.world_to_screen(cx, cy, cz)
+            stamp(buf, cax, cay, load_sprite("companion"), fg=(150, 200, 180), light=1.0)

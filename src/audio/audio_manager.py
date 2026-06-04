@@ -13,6 +13,7 @@ from src.constants import AUDIO_DIR
 
 class AudioManager:
     FOOTSTEP_COOLDOWN_MS = 120
+    FOOTSTEP_GAIN = 0.5
 
     def __init__(self):
         self.enabled = False
@@ -99,7 +100,7 @@ class AudioManager:
         vol_jitter = random.uniform(0.65, 0.95)
         self._foot_side = 1 - self._foot_side
         side_mod = 1.03 if self._foot_side else 0.97
-        return self.play_sfx(group_id, volume=vol_jitter * side_mod)
+        return self.play_sfx(group_id, volume=vol_jitter * side_mod * self.FOOTSTEP_GAIN)
 
     def play_voice_blip(self, voice: str, variant: int = 0, *, volume: float = 1.0) -> bool:
         if not self.enabled:

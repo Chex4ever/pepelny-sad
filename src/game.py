@@ -11,6 +11,7 @@ from src.audio.audio_manager import AudioManager
 from src.audio.music_controller import MusicController
 from src.constants import CELL_H, CELL_W, FPS, SCREEN_H, SCREEN_W, init_paths
 from src.i18n import init_locale_from_env, t
+from src.core.perf_stats import PerfStats
 from src.core.save_service import SaveService
 from src.core.scene_manager import SceneManager
 from src.data.art_init import ensure_art_files
@@ -56,11 +57,13 @@ class Game:
         self.input = InputState()
         self.clock = pygame.time.Clock()
         self.fps = 0.0
+        self.perf = PerfStats()
         self.running = True
         self.scene = "title"
         self.world_state = WorldState(world_seed=random.randint(1, 99999))
         self.profile = PlayerProfile()
         self.world_map = WorldMap(self.world_state.world_seed)
+        self.world_map.perf_stats = self.perf
         self.overworld: OverworldScene | None = None
         self.battle = None
         self.ending_data = None
@@ -120,6 +123,7 @@ class Game:
         self.profile.inventory.add("grey_herb", 3, 20)
         self.profile.inventory.add("root_fiber", 2, 20)
         self.world_map = WorldMap(self.world_state.world_seed)
+        self.world_map.perf_stats = self.perf
         self.overworld = OverworldScene(self)
         self.intro.reset()
         self.scenes.start_transition("intro")

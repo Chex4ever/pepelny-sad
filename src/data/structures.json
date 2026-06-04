@@ -1,0 +1,20 @@
+{
+  "withered_tree": {
+    "parts": [
+      {"dx": 0, "dy": 0, "z_min": 0, "z_max": 1.5, "blocks_movement": true, "blocks_los": true, "stencil": "tree_trunk"},
+      {"dx": 0, "dy": 0, "z_min": 1.2, "z_max": 3.5, "blocks_movement": false, "blocks_los": true, "stencil": "tree_canopy"},
+      {"dx": -1, "dy": 0, "z_min": 1.5, "z_max": 3.0, "blocks_movement": false, "stencil": "tree_canopy"},
+      {"dx": 1, "dy": 0, "z_min": 1.5, "z_max": 3.0, "blocks_movement": false, "stencil": "tree_canopy"}
+    ]
+  },
+  "bush_low": {
+    "parts": [
+      {"dx": 0, "dy": 0, "z_min": 0.0, "z_max": 0.9, "blocks_movement": false, "stencil": "bush_low"}
+    ]
+  },
+  "bush_heather": {
+    "parts": [
+      {"dx": 0, "dy": 0, "z_min": 0.0, "z_max": 1.2, "blocks_movement": false, "stencil": "bush_heather"}
+    ]
+  }
+}

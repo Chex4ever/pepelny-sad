@@ -187,7 +187,7 @@ class OverworldInputRouter:
         if d:
             nx, ny = ow.player.x + d[0], ow.player.y + d[1]
             layer = ow.game.world_state.layer
-            if ow.game.world_map.is_walkable(nx, ny, layer):
+            if ow.game.world_map.is_walkable(nx, ny, layer, ow.game.profile.body_height_m):
                 ch, _, _ = ow.game.world_map.get_tile(nx, ny, layer)
                 if ch == ">":
                     ow.game.audio.play_sfx("stairs")

@@ -11,7 +11,7 @@ class DebugWindow(ModalWindow):
     blocks_world_input = False
 
     def __init__(self):
-        super().__init__("DEBUG F4", x=1, y=1, w=44, h=20, visible=False)
+        super().__init__("DEBUG F4", x=1, y=1, w=52, h=24, visible=False)
         self._lines: list[str] = []
 
     def set_lines(self, lines: list[str]) -> None:

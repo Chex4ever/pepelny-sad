@@ -1,7 +1,7 @@
 """FOV and ambient updates for overworld."""
 from __future__ import annotations
 
-from src.render.viewport import map_view_h, map_view_w
+from src.constants import MAP_VIEW_TILES_H, MAP_VIEW_TILES_W
 from src.overworld.fov import cast_los_fov
 
 
@@ -19,7 +19,8 @@ class FovController:
     def fov_radius(self) -> int:
         layer = self.scene.game.world_state.layer
         if layer == "surface":
-            return max(map_view_w(), map_view_h()) + 4
+            # World tiles in view (iso footprint); classic char grid is larger visually.
+            return max(MAP_VIEW_TILES_W, MAP_VIEW_TILES_H) + 4
         return 14
 
     def update(self, wx0: int, wy0: int) -> set[tuple[int, int]]:
@@ -28,19 +29,28 @@ class FovController:
         wm = ow.game.world_map
         radius = self.fov_radius()
 
-        def tile_ch(x, y):
-            return wm.get_tile(x, y, layer)[0]
+        if layer == "surface":
+            blocks_fn = lambda x, y: wm.fast_blocks_los(x, y, layer)
+        else:
+            from src.world.visibility import blocks_los as char_blocks_los
+
+            def blocks_fn(x, y):
+                ch, _, _ = wm.get_tile(x, y, layer)
+                return char_blocks_los(ch)
 
         visible = cast_los_fov(
             ow.player.x,
             ow.player.y,
             radius,
-            tile_ch,
-            min_x=wx0 - 1,
-            max_x=wx0 + map_view_w(),
-            min_y=wy0 - 1,
-            max_y=wy0 + map_view_h(),
+            blocks_fn,
+            min_x=wx0,
+            max_x=wx0 + MAP_VIEW_TILES_W - 1,
+            min_y=wy0,
+            max_y=wy0 + MAP_VIEW_TILES_H - 1,
         )
+
+        def tile_ch(x, y):
+            return wm.get_tile(x, y, layer)[0]
         for wx, wy in visible:
             wm.mark_explored(wx, wy, layer)
 

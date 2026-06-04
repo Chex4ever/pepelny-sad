@@ -55,8 +55,30 @@ def _parse_stencil_lines(
     return TileStencil(glyphs=glyphs, default_fg=default_fg, default_bg=default_bg)
 
 
-@lru_cache(maxsize=64)
+def _procedural_stencil(stencil_id: str) -> TileStencil | None:
+    from src.render.procedural_stencil import procedural_tree_canopy, procedural_tree_trunk
+
+    if stencil_id.startswith("tree_canopy_v"):
+        parts = stencil_id.split("_")
+        try:
+            variant = int(parts[2][1:])
+            height = int(parts[3][1:])
+            radius = int(parts[4][1:])
+        except (IndexError, ValueError):
+            variant, height, radius = 0, 5, 2
+        return procedural_tree_canopy(variant, height, radius)
+    if stencil_id == "tree_trunk_slim":
+        return procedural_tree_trunk(False)
+    if stencil_id == "tree_trunk_thick":
+        return procedural_tree_trunk(True)
+    return None
+
+
+@lru_cache(maxsize=128)
 def load_tile_stencil(stencil_id: str) -> TileStencil:
+    proc = _procedural_stencil(stencil_id)
+    if proc is not None:
+        return proc
     path = os.path.join(_tiles_dir(), f"{stencil_id}.txt")
     fg, bg = COLOR_GRASS_FG, COLOR_GRASS
     if os.path.isfile(path):

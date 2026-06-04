@@ -55,6 +55,7 @@ class SaveService:
         game.world_state.defeated_battles = set(tuple(x) for x in data.get("defeated_battles", []))
         game.world_state.tutorial_step = data.get("tutorial_step", -1)
         game.world_map = WorldMap(game.world_state.world_seed)
+        game.world_map.perf_stats = game.perf
         game.world_map.dungeon_explored = set(tuple(x) for x in data.get("dungeon_explored", []))
         game.profile = PlayerProfile()
         game.profile.hp = data.get("hp", 20)

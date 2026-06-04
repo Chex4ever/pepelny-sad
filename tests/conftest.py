@@ -81,6 +81,7 @@ def game():
     g.profile.inventory.add("grey_herb", 3, 20)
     g.profile.inventory.add("root_fiber", 2, 20)
     g.world_map = WorldMap(4242)
+    g.world_map.perf_stats = g.perf
     g.overworld = OverworldScene(g)
     g.scene = "overworld"
     g.transition.active = False

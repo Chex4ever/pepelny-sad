@@ -1,42 +1,54 @@
 """Field of view with line-of-sight shadow casting."""
 from __future__ import annotations
 
-import math
 
-from src.world.visibility import blocks_los
+def _bresenham(x0: int, y0: int, x1: int, y1: int):
+    dx = abs(x1 - x0)
+    dy = -abs(y1 - y0)
+    sx = 1 if x0 < x1 else -1
+    sy = 1 if y0 < y1 else -1
+    err = dx + dy
+    x, y = x0, y0
+    while True:
+        yield x, y
+        if x == x1 and y == y1:
+            break
+        e2 = 2 * err
+        if e2 >= dy:
+            err += dy
+            x += sx
+        if e2 <= dx:
+            err += dx
+            y += sy
 
 
 def cast_los_fov(
     px: int,
     py: int,
     radius: int,
-    get_tile_char,
+    blocks_los_fn,
     *,
-    min_x: int | None = None,
-    max_x: int | None = None,
-    min_y: int | None = None,
-    max_y: int | None = None,
+    min_x: int,
+    max_x: int,
+    min_y: int,
+    max_y: int,
 ) -> set[tuple[int, int]]:
-    """Shadow-casting via radial rays; returns visible world cells."""
-    seen = {(px, py)}
-    radius2 = radius * radius
-    steps = max(120, radius * 8)
-
-    for i in range(steps):
-        ang = (2 * math.pi * i) / steps
-        dx = math.cos(ang)
-        dy = math.sin(ang)
-        for r in range(1, radius + 1):
-            x = px + int(round(dx * r))
-            y = py + int(round(dy * r))
-            if min_x is not None and (x < min_x or x > max_x or y < min_y or y > max_y):
-                break
-            if (x - px) ** 2 + (y - py) ** 2 > radius2:
-                break
-            seen.add((x, y))
-            ch = get_tile_char(x, y)
-            if blocks_los(ch):
-                break
+    """Visible cells in the view rect with LOS from the player."""
+    seen: set[tuple[int, int]] = {(px, py)}
+    r2 = radius * radius
+    for y in range(min_y, max_y + 1):
+        for x in range(min_x, max_x + 1):
+            if (x - px) ** 2 + (y - py) ** 2 > r2:
+                continue
+            blocked = False
+            for lx, ly in _bresenham(px, py, x, y):
+                if (lx, ly) == (px, py):
+                    continue
+                if blocks_los_fn(lx, ly):
+                    blocked = True
+                    break
+            if not blocked:
+                seen.add((x, y))
     return seen
 
 

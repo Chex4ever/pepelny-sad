@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from src.constants import DEFAULT_PLAYER_HEIGHT_M
 from src.progression.combat_profile import CombatProfile, build_combat_profile
 from src.progression.equipment import Equipment
 from src.progression.inventory import Inventory
@@ -12,6 +13,7 @@ from src.progression.modules import module_inventory_bonus
 @dataclass
 class PlayerProfile:
     hp: int = 20
+    body_height_m: float = DEFAULT_PLAYER_HEIGHT_M
     inventory: Inventory = field(default_factory=lambda: Inventory(12))
     equipment: Equipment = field(default_factory=Equipment)
     installed_modules: list[str] = field(default_factory=list)

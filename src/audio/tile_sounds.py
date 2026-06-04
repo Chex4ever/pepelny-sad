@@ -28,12 +28,19 @@ BIOME_SURFACE = {
 
 def resolve_footstep(wx: int, wy: int, layer: str, world_map) -> str:
     ch, _, _ = world_map.get_tile(wx, wy, layer)
-    if ch in TILE_OVERRIDE:
-        return TILE_OVERRIDE[ch]
     if layer == "dungeon":
         return "stone"
+    if ch in "=~&l>#<>":
+        return TILE_OVERRIDE.get(ch, "stone")
+    if layer == "surface":
+        from src.world.biome_blend import sample_climate
+
+        primary, _, _, _ = sample_climate(wx, wy)
+        return BIOME_SURFACE.get(primary, "grass")
+    if ch in TILE_OVERRIDE:
+        return TILE_OVERRIDE[ch]
     cx, cy, _, _ = world_map.world_to_chunk(wx, wy)
     chunk = world_map.chunks.get((cx, cy))
     if chunk is None:
         return "grass"
-    return BIOME_SURFACE.get(chunk.biome, "grass")
+    return BIOME_SURFACE.get(chunk.dominant_biome, "grass")

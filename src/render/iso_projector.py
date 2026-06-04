@@ -1,7 +1,7 @@
 """World grid to screen character coordinates (2:1 isometric)."""
 from __future__ import annotations
 
-from src.constants import ISO_ORIGIN_X, ISO_ORIGIN_Y, ISO_STEP_X, ISO_STEP_Y
+from src.constants import ISO_ORIGIN_X, ISO_ORIGIN_Y, ISO_STEP_X, ISO_STEP_Y, ISO_Z_CHARS_PER_M
 
 
 class IsoProjector:
@@ -19,9 +19,9 @@ class IsoProjector:
         self.step_x = step_x
         self.step_y = step_y
 
-    def world_to_screen(self, wx: int, wy: int) -> tuple[int, int]:
+    def world_to_screen(self, wx: int, wy: int, z_m: float = 0.0) -> tuple[int, int]:
         sx = self.origin_x + (wx - wy) * self.step_x
-        sy = self.origin_y + (wx + wy) * self.step_y
+        sy = self.origin_y + (wx + wy) * self.step_y - int(z_m * ISO_Z_CHARS_PER_M)
         return sx, sy
 
     def screen_to_world(

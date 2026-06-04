@@ -172,6 +172,7 @@ class SceneManager:
                 self.start_transition("overworld")
             g.intro.draw(g.buffer)
         elif g.scene == "overworld" and g.overworld:
+            g.perf.begin_frame()
             g.overworld.update(dt_ms)
             if getattr(g, "tutorial", None):
                 g.tutorial.update_frame()
@@ -198,6 +199,7 @@ class SceneManager:
                 if debug_w.visible:
                     debug_w.set_lines(g.overworld.debug_lines(g.fps))
                 g.overworld.draw(g.buffer, inp)
+            g.perf.end_frame()
         elif g.scene == "battle" and g.battle:
             g.battle.update()
             if not ui_blocked:

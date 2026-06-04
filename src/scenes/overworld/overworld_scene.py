@@ -60,12 +60,17 @@ class OverworldScene:
         return self.game.world_map.is_explored(wx, wy, self.game.world_state.layer)
 
     def update(self, dt_ms: int = 16):
-        self.frame += 1
-        if self.dialogue_open:
-            self.dialogue.update(dt_ms, self.game.audio)
-        self.camera.center_on(self.player.x, self.player.y)
-        wx0, wy0 = self.camera.view_origin()
-        self.visible = self.fov.update(wx0, wy0)
+        perf = self.game.perf
+        with perf.measure("ow_update"):
+            self.game.world_map.begin_frame()
+            self.frame += 1
+            if self.dialogue_open:
+                self.dialogue.update(dt_ms, self.game.audio)
+            self.camera.center_on(self.player.x, self.player.y)
+            self.game.world_map._ensure_radius(self.player.x, self.player.y)
+            wx0, wy0 = self.camera.view_origin()
+            with perf.measure("fov"):
+                self.visible = self.fov.update(wx0, wy0)
 
     def handle_input(self, inp):
         return self.input_router.handle_input(inp)
@@ -74,6 +79,7 @@ class OverworldScene:
         g = self.game
         wx0, wy0 = self.camera.view_origin()
         from src.constants import CHUNK_SIZE
+        from src.render.render_mode import render_mode
 
         layer_id = g.world_state.layer
         layer_label = "поверхность" if layer_id == "surface" else "подземелье"
@@ -81,8 +87,13 @@ class OverworldScene:
         chunk_y = self.player.y // CHUNK_SIZE
         weather = "шторм" if self.weather.active else "ясно"
         visible_n = len(self.visible)
-        return [
-            f"FPS: {fps:.1f}",
+        perf_lines = g.perf.debug_lines(
+            fps,
+            render_mode=render_mode(),
+            loaded_chunks=len(g.world_map.chunks),
+        )
+        return perf_lines + [
+            "---",
             f"Сцена: overworld",
             f"Layer: {layer_id} ({layer_label})",
             f"Turn: {g.world_state.turn_count}",
@@ -100,24 +111,27 @@ class OverworldScene:
         self.interaction.open_dialogue(did)
 
     def draw(self, buf, inp=None):
-        if inp:
-            self.input_router.update_mouse_tooltip(inp)
-        wx0, wy0 = self.camera.view_origin()
-        self.map_renderer.draw(buf, wx0, wy0)
-        self.status.set_status(
-            self.game.world_state.layer,
-            self.game.world_state.turn_count,
-            pan_x=self.camera.pan_x,
-            pan_y=self.camera.pan_y,
-        )
-        self.status.draw(buf)
-        if self.sheet:
-            self.sheet.bind_profile(self.game.profile)
-        if self.craft:
-            self.craft.bind(self.game.profile, self.game.world_state)
-        self.game.windows.draw(buf)
-        if self.dialogue_open and self.dialogue.active:
-            self.dialogue.draw_box(buf, 10, SCREEN_H - 8, 70, 5)
+        with self.game.perf.measure("ow_draw"):
+            if inp:
+                self.input_router.update_mouse_tooltip(inp)
+            wx0, wy0 = self.camera.view_origin()
+            with self.game.perf.measure("map_draw"):
+                self.map_renderer.draw(buf, wx0, wy0)
+            self.status.set_status(
+                self.game.world_state.layer,
+                self.game.world_state.turn_count,
+                pan_x=self.camera.pan_x,
+                pan_y=self.camera.pan_y,
+            )
+            self.status.draw(buf)
+            if self.sheet:
+                self.sheet.bind_profile(self.game.profile)
+            if self.craft:
+                self.craft.bind(self.game.profile, self.game.world_state)
+            self.game.windows.draw(buf)
+            if self.dialogue_open and self.dialogue.active:
+                self.dialogue.draw_box(buf, 10, SCREEN_H - 8, 70, 5)
+            self.game.world_map.end_frame()
 
     @property
     def needs_battle(self) -> str | None:
