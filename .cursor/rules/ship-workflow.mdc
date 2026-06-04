@@ -1,0 +1,35 @@
+---
+description: Always test, commit, PR, merge, and monitor CI — never leave dirty working tree
+alwaysApply: true
+---
+
+# Ship workflow (mandatory)
+
+When you implement or fix anything in this repo, **do not stop at "done in the editor"**. Finish the full delivery loop without waiting for the user to ask.
+
+## Before ending a task
+
+1. **Run tests**: `python -m pytest tests/ -q` (or the smallest relevant subset, then full suite before PR).
+2. **Commit**: never leave uncommitted changes. Group commits by meaning; use separate branches for separate concerns.
+3. **PR**: push branch and open a PR with summary + test plan (`gh pr create`).
+4. **Self-review**: read the diff as a reviewer; fix obvious issues before merge.
+5. **Merge**: merge PR to `main` when CI is green (`gh pr merge`).
+6. **Release**: merging to `main` triggers GitHub Actions **Release** (patch bump on VERSION unless VERSION was changed in the merge commit). Monitor with `gh run list --workflow=release.yml`.
+
+## Branching
+
+- One logical change set → one branch → one PR (e.g. `feat/i18n`, `fix/click-through-windows`).
+- Stack PRs when needed: merge foundation first, rebase follow-ups on updated `main`.
+- Do not accumulate a monolithic dirty `main` working tree across sessions.
+
+## Terminology (user intent)
+
+| User says | Meaning |
+|-----------|---------|
+| «релиз» / «новый билд» / «patch» | merge to `main` → GitHub Actions Release → tag `vX.Y.Z` (3rd number = patch) |
+| «локальная сборка» | `python tools/build_release.py` on the machine |
+| «CI» | workflow `ci.yml` only (tests), not release |
+
+## Local VERSION
+
+After `git pull`, trust `origin/main` VERSION (currently auto-bumped by Actions). Do not run local PyInstaller when the user asked for a release — push to `main` instead.

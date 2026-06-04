@@ -1,33 +1,25 @@
-"""Story dialogues."""
+"""Story dialogues — localized via src/i18n."""
 from __future__ import annotations
 
-DIALOGUES = {
-    "elder_intro": [
-        "Старейшина пепла: Элион... сад давно увял.",
-        "Слушай ветер — он помнит Лиру лучше нас.",
-        "Иди на восток. Там, где сломан фонарь, горит Скорбь.",
-    ],
-    "ivy_crossing": [
-        "Шахта зовёт вниз. Сад Пепла ждёт.",
-        "F5 — сохранить у перекрёстка.",
-    ],
-    "whisper_companion": [
-        "Шёпот: Я могу сплести для тебя кое-что простое.",
-        "E — открыть мобильную кузню.",
-    ],
-    "sorrow_companion": [
-        "Скорбь-искра: Звёзды... я вижу их сквозь пепел.",
-        "Осколки мерцают сильнее рядом со мной.",
-    ],
-    "warden_mercy": [
-        "Страж: Отпусти её. Пепел станет садом снова.",
-        "Лира не просила, чтобы ты держал боль.",
-    ],
-    "warden_kill": [
-        "Страж: Тогда неси осколок. Пусть он режет тебя, а не её.",
-    ],
+from src.i18n import t, t_list
+
+SPEAKER_KEY_BY_DIALOGUE: dict[str, str] = {
+    "elder_intro": "dialogue.speaker.elder",
+    "ivy_crossing": "dialogue.speaker.narrator",
+    "whisper_companion": "dialogue.speaker.whisper",
+    "sorrow_companion": "dialogue.speaker.sorrow",
+    "warden_mercy": "dialogue.speaker.warden",
+    "warden_kill": "dialogue.speaker.warden",
 }
 
 
+def get_dialogue_speaker(dialogue_id: str) -> str:
+    key = SPEAKER_KEY_BY_DIALOGUE.get(dialogue_id, "dialogue.speaker.narrator")
+    return t(key)
+
+
 def get_dialogue(dialogue_id: str) -> list[str]:
-    return DIALOGUES.get(dialogue_id, ["..."])
+    lines = t_list(f"dialogue.{dialogue_id}.lines")
+    if lines:
+        return lines
+    return [t("dialogue.speaker.narrator")]

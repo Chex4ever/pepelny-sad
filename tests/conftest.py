@@ -21,6 +21,9 @@ from src.constants import init_paths
 from src.data.art_init import ensure_art_files
 
 init_paths(ROOT)
+from src.i18n import init_locale_from_env
+
+init_locale_from_env()
 ensure_art_files()
 
 
@@ -137,6 +140,10 @@ class FakeInput:
         import pygame
         return self.any_pressed(pygame.K_F1)
 
+    def pressed_f4(self) -> bool:
+        import pygame
+        return self.any_pressed(pygame.K_F4)
+
     def pressed_tab(self) -> bool:
         import pygame
         return self.any_pressed(pygame.K_TAB)
@@ -192,6 +199,15 @@ class FakeInput:
 
     def mouse_left_released(self) -> bool:
         return 1 in self.mouse_released
+
+    def mouse_middle_down(self) -> bool:
+        return 2 in self.mouse_pressed
+
+    def mouse_middle_held(self) -> bool:
+        return 2 in self.mouse_down
+
+    def mouse_middle_released(self) -> bool:
+        return 2 in self.mouse_released
 
     def mouse_dragging(self, threshold: int = 4) -> bool:
         return False
