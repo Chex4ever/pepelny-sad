@@ -7,7 +7,7 @@ from src.constants import CELL_H, CELL_W, COLOR_BG, ISO_STEP_X, ISO_STEP_Y, SCRE
 from src.render.gpu.atlas import AtlasRegion, TileAtlas, preload_stencil_ids
 from src.render.gpu.buffer_draw import draw_interleaved_triangles
 from src.render.gpu.vertex_buffer import FloatBufferBuilder
-from src.render.iso_footprint import iso_footprint_cells
+from src.render.iso_footprint import iso_footprint_pixel_rect
 from src.render.iso_projector import IsoProjector
 from src.render.screen_buffer import FOG_EXPLORED, FOG_UNEXPLORED
 from src.render.tile_stencil import load_sprite, load_tile_stencil, SpriteStencil, TileStencil
@@ -183,8 +183,20 @@ class GpuIsoRenderer:
         fg_tint = self._tint(fg, light)
         bg_tint = self._tint(bg if bg is not None else stencil.default_bg, light)
         if expand_footprint:
-            for cx, cy in iso_footprint_cells(anchor_cx, anchor_cy):
-                self._append_solid_cell(b, cx, cy, bg_tint, fog_f)
+            x0, y0, x1, y1 = iso_footprint_pixel_rect(anchor_cx, anchor_cy)
+            b.append_quad_9(
+                x0,
+                y0,
+                x1,
+                y1,
+                -1.0,
+                -1.0,
+                -1.0,
+                -1.0,
+                *bg_tint,
+                fog_f,
+            )
+            self.last_batch_quads += 1
         reg = self._atlas.get_region(stencil_id)
         for g in stencil.glyphs:
             self._append_atlas_glyph_cell(

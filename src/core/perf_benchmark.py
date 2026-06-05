@@ -220,15 +220,34 @@ def default_fov_los_budget_ms() -> float:
     return float(os.environ.get("PEPELNY_FOV_LOS_MS", "10"))
 
 
-def default_budget_ms(render_mode: str) -> tuple[float, float]:
-    """Mean / p95 frame budget from env or defaults (60–120 FPS target on GPU)."""
+def default_frame_budget_ms() -> tuple[float, float]:
+    """Gameplay frame budget (full frame including GPU present). 60 FPS target."""
     mean_env = os.environ.get("PEPELNY_PERF_MEAN_MS")
     p95_env = os.environ.get("PEPELNY_PERF_P95_MS")
     if mean_env and p95_env:
         return float(mean_env), float(p95_env)
-    if render_mode == "gpu":
-        return 16.0, 24.0
-    return 165.0, 260.0
+    return 16.0, 24.0
+
+
+def default_gpu_map_budget_ms() -> float:
+    """GPU iso draw (gpu_map stage), must fit inside frame budget."""
+    return float(os.environ.get("PEPELNY_GPU_MAP_MS", "16"))
+
+
+def default_gpu_batch_budget() -> int:
+    """Max textured quads per overworld frame (gpu_batch counter)."""
+    return int(os.environ.get("PEPELNY_GPU_BATCH_MAX", "8000"))
+
+
+def default_budget_ms(render_mode: str) -> tuple[float, float]:
+    """Mean / p95 frame budget. GPU gameplay path uses 16/24 ms; iso CPU is debug-only."""
+    if render_mode == "iso" and os.environ.get("PEPELNY_TEST_ISO_CPU", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        return 165.0, 260.0
+    return default_frame_budget_ms()
 
 
 def write_perf_report(report: OverworldPerfReport, path: str | Path) -> Path:

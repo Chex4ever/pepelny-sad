@@ -1,9 +1,17 @@
-"""GPU overworld walk benchmark (skipped without GL)."""
+"""GPU overworld walk — full frame must stay under 16 ms (gameplay path)."""
 from __future__ import annotations
+
+import os
 
 import pytest
 
-from src.core.perf_benchmark import OverworldBenchConfig, default_budget_ms, run_overworld_playthrough
+from src.core.perf_benchmark import (
+    OverworldBenchConfig,
+    default_frame_budget_ms,
+    default_gpu_batch_budget,
+    default_gpu_map_budget_ms,
+    run_overworld_playthrough,
+)
 from src.render.gpu.context import gl_available
 from src.render.render_mode import init_render_mode_from_env
 
@@ -12,7 +20,12 @@ from src.render.render_mode import init_render_mode_from_env
 def bench_game_gpu(monkeypatch):
     """OpenGL bench; teardown restores render mode for later tests."""
     if not gl_available():
-        pytest.skip("No OpenGL context")
+        pytest.fail(
+            "OpenGL required for gameplay perf gate (PEPELNY_RENDER=gpu). "
+            "Install GPU drivers or set PEPELNY_SKIP_GPU_PERF=1 only in local debug."
+        )
+    if os.environ.get("PEPELNY_SKIP_GPU_PERF", "").strip().lower() in ("1", "true", "yes"):
+        pytest.skip("PEPELNY_SKIP_GPU_PERF=1")
     import pygame
 
     from src.constants import CELL_H, CELL_W, SCREEN_H, SCREEN_W
@@ -34,7 +47,7 @@ def bench_game_gpu(monkeypatch):
     g = BenchGame()
     g.gpu_presenter = GpuPresenter(screen, AsciiRenderer(screen))
     if not g.gpu_presenter.available:
-        pytest.skip("GPU presenter unavailable")
+        pytest.fail("GPU presenter unavailable — gameplay path cannot meet 16 ms budget")
     try:
         yield g
     finally:
@@ -44,20 +57,36 @@ def bench_game_gpu(monkeypatch):
         init_render_mode_from_env()
 
 
+def _stage(report, key: str):
+    return next((s for s in report.stages if s.key == key), None)
+
+
 @pytest.mark.performance
 @pytest.mark.slow
-def test_overworld_gpu_walk_frame_budget(bench_game_gpu):
-    """GPU map path budget (flip/vsync excluded — varies by driver)."""
-    cfg = OverworldBenchConfig(warmup_frames=8, measure_frames=16)
+def test_overworld_gpu_full_frame_under_16ms(bench_game_gpu):
+    """Full overworld frame with GPU present — same path as in-game PEPELNY_RENDER=gpu."""
+    cfg = OverworldBenchConfig(warmup_frames=8, measure_frames=24)
     report = run_overworld_playthrough(bench_game_gpu, cfg, gpu_present=True)
-    map_stage = next((s for s in report.stages if s.key == "map_draw"), None)
-    assert map_stage is not None, report.text_lines()[:8]
-    map_budget = float(
-        __import__("os").environ.get("PEPELNY_GPU_MAP_MS", "25")
+
+    mean_b, p95_b = default_frame_budget_ms()
+    map_b = default_gpu_map_budget_ms()
+    batch_b = default_gpu_batch_budget()
+
+    gpu_map = _stage(report, "gpu_map")
+    gpu_batch = report.counters_mean.get("gpu_batch", 0)
+
+    lines = "\n".join(report.text_lines()[:16])
+    assert report.mean_frame_ms < mean_b, (
+        f"full frame mean {report.mean_frame_ms:.1f} ms > {mean_b} ms (60 FPS gate)\n{lines}"
     )
-    assert map_stage.mean_ms < map_budget, (
-        f"gpu map mean {map_stage.mean_ms:.1f} ms > {map_budget}\n"
-        + "\n".join(report.text_lines()[:12])
+    assert report.p95_frame_ms < p95_b, (
+        f"full frame p95 {report.p95_frame_ms:.1f} ms > {p95_b} ms\n{lines}"
     )
-    stage_keys = {s.key for s in report.stages}
-    assert "present" in stage_keys or "gpu_map" in stage_keys
+    assert gpu_map is not None, f"gpu_map stage missing\n{lines}"
+    assert gpu_map.mean_ms < map_b, (
+        f"gpu_map mean {gpu_map.mean_ms:.1f} ms > {map_b} ms "
+        f"(gpu_batch≈{gpu_batch:.0f})\n{lines}"
+    )
+    assert gpu_batch <= batch_b, (
+        f"gpu_batch mean {gpu_batch:.0f} > {batch_b} quads/frame\n{lines}"
+    )

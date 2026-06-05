@@ -20,6 +20,9 @@ from src.core.perf_benchmark import (
     OverworldBenchConfig,
     default_budget_ms,
     default_fov_los_budget_ms,
+    default_frame_budget_ms,
+    default_gpu_batch_budget,
+    default_gpu_map_budget_ms,
     maybe_write_report,
     run_overworld_playthrough,
 )
@@ -64,7 +67,9 @@ def main() -> int:
     )
     report = run_overworld_playthrough(game, cfg, gpu_present=gpu)
     path = maybe_write_report(report)
-    mean_b, p95_b = default_budget_ms(mode)
+    mean_b, p95_b = (
+        default_frame_budget_ms() if gpu else default_budget_ms(mode)
+    )
 
     for line in report.text_lines():
         print(line)
@@ -77,9 +82,26 @@ def main() -> int:
     fov_stage = next((s for s in report.stages if s.key == "fov_los"), None)
     if fov_stage is not None:
         print(f"fov_los: mean {fov_stage.mean_ms:.1f} ms (budget < {fov_budget:.0f} ms)")
+    if gpu:
+        gpu_map = next((s for s in report.stages if s.key == "gpu_map"), None)
+        batch = report.counters_mean.get("gpu_batch", 0)
+        print(
+            f"gpu_map: mean {gpu_map.mean_ms:.1f} ms (budget < {default_gpu_map_budget_ms():.0f} ms)"
+            if gpu_map
+            else "gpu_map: (missing)"
+        )
+        print(f"gpu_batch: mean {batch:.0f} (budget <= {default_gpu_batch_budget()})")
     if path:
         print(f"Wrote {path}")
-    if report.mean_frame_ms >= mean_b:
+    if gpu and report.mean_frame_ms >= mean_b:
+        return 1
+    if gpu:
+        gpu_map = next((s for s in report.stages if s.key == "gpu_map"), None)
+        if gpu_map is not None and gpu_map.mean_ms >= default_gpu_map_budget_ms():
+            return 1
+        if report.counters_mean.get("gpu_batch", 0) > default_gpu_batch_budget():
+            return 1
+    if not gpu and report.mean_frame_ms >= mean_b:
         return 1
     if fov_stage is not None and fov_stage.mean_ms >= fov_budget:
         return 1
