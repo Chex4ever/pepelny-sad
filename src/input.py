@@ -54,6 +54,13 @@ class InputState:
         self._text_input = False
         self._prev_mouse_pos = self.mouse_pos
 
+    def flush_pressed(self) -> None:
+        """Drop one-shot keys (e.g. Enter used on title menu)."""
+        self.keys_pressed.clear()
+        self.scancodes_pressed.clear()
+        self.mouse_pressed.clear()
+        self._text_input = False
+
     def _normalize_key(self, event: pygame.event.Event) -> int | None:
         if event.type not in (pygame.KEYDOWN, pygame.KEYUP):
             return None
@@ -166,7 +173,10 @@ class InputState:
         gx, gy = self.mouse_grid()
         if not self.mouse_on_map():
             return None
-        return IsoProjector().screen_to_world(gx, gy, wx0, wy0, map_view_w(), map_view_h())
+        vw, vh = map_view_w(), map_view_h()
+        p = IsoProjector()
+        focus_wx, focus_wy = p.view_focus(wx0, wy0, vw, vh)
+        return p.screen_to_world(gx, gy, focus_wx=focus_wx, focus_wy=focus_wy)
 
     def mouse_on_map(self, map_origin_y: int | None = None) -> bool:
         from src.render.render_mode import is_iso
@@ -296,6 +306,21 @@ class InputState:
         )
 
     def dir_key(self):
+        from src.render.render_mode import is_iso
+
+        if is_iso():
+            return self.dir_key_iso()
+        return self.dir_key_screen()
+
+    def dir_key_pressed(self) -> tuple[int, int] | None:
+        """One-shot navigation (keydown this frame)."""
+        from src.render.render_mode import is_iso
+
+        if is_iso():
+            return self.dir_key_iso_pressed()
+        return self.dir_key_screen_pressed()
+
+    def dir_key_screen_pressed(self) -> tuple[int, int] | None:
         if self.nav_up_pressed():
             return (0, -1)
         if self.nav_down_pressed():
@@ -304,4 +329,42 @@ class InputState:
             return (-1, 0)
         if self.nav_right_pressed():
             return (1, 0)
+        return None
+
+    def dir_key_iso_pressed(self) -> tuple[int, int] | None:
+        from src.render.iso_projector import IsoProjector
+
+        if self.nav_up_pressed():
+            return IsoProjector.screen_delta_to_world(0, -1)
+        if self.nav_down_pressed():
+            return IsoProjector.screen_delta_to_world(0, 1)
+        if self.nav_left_pressed():
+            return IsoProjector.screen_delta_to_world(-1, 0)
+        if self.nav_right_pressed():
+            return IsoProjector.screen_delta_to_world(1, 0)
+        return None
+
+    def dir_key_screen(self):
+        """Screen-aligned movement (up on screen = wy-1)."""
+        if self.nav_up_pressed():
+            return (0, -1)
+        if self.nav_down_pressed():
+            return (0, 1)
+        if self.nav_left_pressed():
+            return (-1, 0)
+        if self.nav_right_pressed():
+            return (1, 0)
+        return None
+
+    def dir_key_iso(self):
+        from src.render.iso_projector import IsoProjector
+
+        if self.nav_up_pressed():
+            return IsoProjector.screen_delta_to_world(0, -1)
+        if self.nav_down_pressed():
+            return IsoProjector.screen_delta_to_world(0, 1)
+        if self.nav_left_pressed():
+            return IsoProjector.screen_delta_to_world(-1, 0)
+        if self.nav_right_pressed():
+            return IsoProjector.screen_delta_to_world(1, 0)
         return None

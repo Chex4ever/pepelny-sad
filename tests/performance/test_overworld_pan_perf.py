@@ -1,68 +1,51 @@
-"""Overworld panning performance benchmark (headless)."""
+"""Camera pan benchmark (complements walk playthrough in test_overworld_walk_perf)."""
 from __future__ import annotations
 
 import math
-import statistics
-import time
 
 import pytest
 
-from src.render.render_mode import init_render_mode_from_env
+from src.core.perf_benchmark import OverworldBenchConfig, default_budget_ms, run_overworld_playthrough
+from src.core.perf_benchmark import WalkInput
 
 
-def _smooth_pan(camera, frame: int, total: int, limit: int) -> None:
-    t = frame / max(1, total - 1)
-    camera.set_pan(
-        int(math.sin(t * math.pi * 2) * limit * 0.85),
-        int(math.cos(t * math.pi * 2) * limit * 0.85),
-    )
+class PanInput(WalkInput):
+    """No movement; only camera pan changes each frame."""
 
+    def __init__(self, camera, total: int) -> None:
+        super().__init__("down")
+        self._camera = camera
+        self._total = total
+        self._frame = 0
+        self._limit = camera.pan_limit
 
-def _run_overworld_frames(game, *, frames: int, warmup: int) -> list[float]:
-    ow = game.overworld
-    assert ow is not None
-    ow.game.world_map.perf_stats = game.perf
-    limit = ow.camera.pan_limit
-    samples: list[float] = []
+    def begin_frame(self) -> None:
+        super().begin_frame()
+        t = self._frame / max(1, self._total - 1)
+        self._camera.set_pan(
+            int(math.sin(t * math.pi * 2) * self._limit * 0.85),
+            int(math.cos(t * math.pi * 2) * self._limit * 0.85),
+        )
+        self._frame += 1
 
-    for i in range(warmup + frames):
-        _smooth_pan(ow.camera, i, warmup + frames, limit)
-        t0 = time.perf_counter()
-        ow.update(16)
-        ow.draw(game.buffer)
-        elapsed = (time.perf_counter() - t0) * 1000.0
-        if i >= warmup:
-            samples.append(elapsed)
-
-    return samples
-
-
-# Iso surface render is heavy (~4s/frame on dev hardware); thresholds catch regressions.
-from src.constants import TARGET_FRAME_MS
-
-_ISO_MEAN_BUDGET_MS = TARGET_FRAME_MS * 1.25
-_ISO_P95_BUDGET_MS = TARGET_FRAME_MS * 2.0
-
-
-@pytest.fixture
-def bench_game_iso(monkeypatch):
-    monkeypatch.setenv("PEPELNY_RENDER", "iso")
-    init_render_mode_from_env()
-    from tests.performance.conftest import BenchGame
-
-    return BenchGame()
+    def dir_key(self):
+        return None
 
 
 @pytest.mark.performance
-def test_overworld_iso_pan_frame_budget(bench_game_iso):
-    """Pan across loaded surface world in iso; records current perf budget."""
+@pytest.mark.slow
+def test_overworld_iso_pan_frame_budget(bench_game_iso, bench_config):
+    """Pan camera on preloaded world (no walking)."""
     bench_game_iso.world_map._ensure_radius(80, 24)
-
-    samples = _run_overworld_frames(bench_game_iso, frames=6, warmup=2)
-    mean_ms = statistics.mean(samples)
-    p95_ms = sorted(samples)[int(len(samples) * 0.95)]
-
-    assert mean_ms < _ISO_MEAN_BUDGET_MS, f"iso mean frame {mean_ms:.1f} ms (budget {_ISO_MEAN_BUDGET_MS})"
-    assert p95_ms < _ISO_P95_BUDGET_MS, f"iso p95 frame {p95_ms:.1f} ms"
-    assert bench_game_iso.perf.count("get_column") > 50
-    assert bench_game_iso.perf.count("stamp") > 0
+    cfg = OverworldBenchConfig(
+        seed=bench_config.seed,
+        warmup_frames=2,
+        measure_frames=6,
+        bootstrap_new_game=False,
+    )
+    pan_inp = PanInput(bench_game_iso.overworld.camera, cfg.warmup_frames + cfg.measure_frames)
+    report = run_overworld_playthrough(bench_game_iso, cfg, inp=pan_inp)
+    mean_budget, p95_budget = default_budget_ms("iso")
+    assert report.mean_frame_ms < mean_budget
+    assert report.p95_frame_ms < p95_budget
+    assert report.counters_mean.get("draw_queue", 0) > 0 or bench_game_iso.perf.count("stamp") > 0

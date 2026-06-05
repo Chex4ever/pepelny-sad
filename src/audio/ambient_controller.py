@@ -11,13 +11,19 @@ def nearest_torch_volume(
     max_dist: float = 8.0,
 ) -> float:
     px, py = player_pos
+    max_dist2 = max_dist * max_dist
     best = 0.0
     for wx, wy in visible:
+        d2 = (wx - px) ** 2 + (wy - py) ** 2
+        if d2 > max_dist2:
+            continue
         if tile_ch(wx, wy) not in "li":
             continue
-        dist = ((wx - px) ** 2 + (wy - py) ** 2) ** 0.5
+        dist = d2**0.5
         vol = max(0.0, 1.0 - dist / max_dist)
         best = max(best, vol)
+        if best >= 1.0:
+            break
     return min(1.0, best)
 
 

@@ -22,13 +22,22 @@ class ScreenBuffer:
         self.fog = [FOG_NONE] * n
         self.fog_a = [0] * n
 
-    def clear(self, ch=" ", fg=(180, 190, 200), bg=(8, 8, 18), light=1.0):
+    def clear(
+        self,
+        ch=" ",
+        fg=(180, 190, 200),
+        bg=(8, 8, 18),
+        light=1.0,
+        *,
+        fg_a: int = 255,
+        bg_a: int = 255,
+    ):
         n = self.width * self.height
         self.chars = [ch] * n
         self.fg = [fg] * n
         self.bg = [bg] * n
-        self.fg_a = [255] * n
-        self.bg_a = [255] * n
+        self.fg_a = [fg_a] * n
+        self.bg_a = [bg_a] * n
         self.light = [light] * n
         self.fog = [FOG_NONE] * n
         self.fog_a = [0] * n

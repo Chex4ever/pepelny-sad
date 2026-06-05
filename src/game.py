@@ -11,12 +11,14 @@ from src.audio.audio_manager import AudioManager
 from src.audio.music_controller import MusicController
 from src.constants import CELL_H, CELL_W, FPS, SCREEN_H, SCREEN_W, init_paths
 from src.i18n import init_locale_from_env, t
+from src.core.loading_flow import LoadingFlow
 from src.core.perf_stats import PerfStats
 from src.core.save_service import SaveService
 from src.core.scene_manager import SceneManager
 from src.data.art_init import ensure_art_files
 from src.input import InputState
 from src.progression.player_profile import PlayerProfile
+from src.render.render_mode import init_render_mode_from_env, render_mode
 from src.render.renderer import AsciiRenderer
 from src.render.screen_buffer import ScreenBuffer
 from src.render.transitions import TransitionManager
@@ -46,13 +48,23 @@ class Game:
         init_locale_from_env()
         ensure_art_files()
         pygame.init()
+        init_render_mode_from_env()
         pygame.display.set_caption(f"Пепельный Сад v{get_version()}")
-        self.screen = pygame.display.set_mode((SCREEN_W * CELL_W, SCREEN_H * CELL_H))
+        pixel_w, pixel_h = SCREEN_W * CELL_W, SCREEN_H * CELL_H
+        mode_flags = 0
+        if render_mode() == "gpu":
+            mode_flags = pygame.OPENGL | pygame.DOUBLEBUF
+        self.screen = pygame.display.set_mode((pixel_w, pixel_h), mode_flags)
         if hasattr(pygame.key, "stop_text_input"):
             pygame.key.stop_text_input()
         pygame.event.clear()
         pygame.event.pump()
         self.renderer = AsciiRenderer(self.screen)
+        self.gpu_presenter = None
+        if render_mode() == "gpu":
+            from src.render.gpu.presenter import GpuPresenter
+
+            self.gpu_presenter = GpuPresenter(self.screen, self.renderer)
         self.buffer = ScreenBuffer(SCREEN_W, SCREEN_H)
         self.input = InputState()
         self.clock = pygame.time.Clock()
@@ -90,6 +102,7 @@ class Game:
         self.tutorial = TutorialController(self)
         self.tutorial_window = self.windows.get("tutorial")
         self.transition = TransitionManager()
+        self.loading = LoadingFlow()
         self._pending_action: str | None = None
         self._fade_overlay = pygame.Surface(
             (SCREEN_W * CELL_W, SCREEN_H * CELL_H), pygame.SRCALPHA
@@ -116,17 +129,16 @@ class Game:
     def _on_battle_done(self, result: str) -> None:
         self.scenes.on_battle_done(result)
 
+    def request_new_game(self, seed: int | None = None) -> None:
+        """Fade out title, show loading, then intro with fade-in."""
+        self.loading.start_new_game(self, seed if seed is not None else self.title_seed)
+
     def new_game(self, seed: int | None = None):
-        self.world_state = WorldState(world_seed=seed or random.randint(1, 99999))
-        self.world_state.tutorial_step = 0
-        self.profile = PlayerProfile()
-        self.profile.inventory.add("grey_herb", 3, 20)
-        self.profile.inventory.add("root_fiber", 2, 20)
-        self.world_map = WorldMap(self.world_state.world_seed)
-        self.world_map.perf_stats = self.perf
-        self.overworld = OverworldScene(self)
+        from src.core.new_game_loader import build_new_game
+
+        build_new_game(self, seed)
         self.intro.reset()
-        self.scenes.start_transition("intro")
+        self.scene = "intro"
 
     def run(self):
         while self.running:
@@ -148,21 +160,38 @@ class Game:
     def _close_examine(self):
         self.windows.close_examine()
 
+    def _gpu_active(self) -> bool:
+        return (
+            render_mode() == "gpu"
+            and self.gpu_presenter is not None
+            and self.gpu_presenter.available
+        )
+
     def _render_frame(self):
-        self.pause.draw(self.buffer)
-        self.help.draw(self.buffer)
-        self.debug.draw(self.buffer)
-        self.renderer.draw(self.buffer)
-        alpha = self.transition.alpha()
-        if alpha > 0:
-            self._fade_overlay.fill((0, 0, 0, alpha))
-            self.screen.blit(self._fade_overlay, (0, 0))
-            pygame.display.flip()
+        perf = self.perf
+        with perf.measure("overlay_ui"):
+            self.pause.draw(self.buffer)
+            self.help.draw(self.buffer)
+            self.debug.draw(self.buffer)
+        fade_alpha = self.transition.alpha()
+        gpu = self._gpu_active()
+        use_gpu_map = gpu and self.scene == "overworld" and self.overworld is not None
+        with perf.measure("present"):
+            if use_gpu_map:
+                self.gpu_presenter.render_overworld(self, fade_alpha=fade_alpha)
+            elif gpu:
+                self.gpu_presenter.present_buffer(self.buffer, fade_alpha=fade_alpha)
+            else:
+                self.renderer.draw(self.buffer)
+                if fade_alpha > 0:
+                    self._fade_overlay.fill((0, 0, 0, fade_alpha))
+                    self.screen.blit(self._fade_overlay, (0, 0))
+                    pygame.display.flip()
 
     def _update_title(self):
-        if self.input.confirm_pressed():
+        if self.input.confirm_pressed() and not self.loading.active:
             self.audio.play_sfx("ui_confirm")
-            self.new_game(self.title_seed)
+            self.request_new_game(self.title_seed)
         if self.input.pressed(pygame.K_r):
             self.title_seed = random.randint(1, 99999)
         if self.input.pressed(pygame.K_l):

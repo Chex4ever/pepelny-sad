@@ -44,6 +44,7 @@ alwaysApply: true
 - [ ] **Unit** — покрыта изменённая логика (`tests/unit/`)
 - [ ] **Integration** — если затронуты сцены или сквозной flow (`tests/integration/`)
 - [ ] **Regression** — если bugfix (`tests/regression/`, тест падает без фикса)
+- [ ] **Performance** — если overworld/рендер/FOV (`tests/performance/`, `docs/PERFORMANCE.md`)
 - [ ] `python -m pytest` проходит
 - [ ] README/правила обновлены, если менялся UX или setup
 - [ ] Нет секретов и артеfactов в коммите
@@ -56,6 +57,7 @@ alwaysApply: true
 
 ## Test plan
 - [ ] `python -m pytest`
+- [ ] `python -m pytest tests/performance/ -q` (если затронут perf-путь)
 - [ ] Ручная проверка: …
 ```
 

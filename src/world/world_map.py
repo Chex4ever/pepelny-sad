@@ -1,6 +1,9 @@
 """World map with chunk streaming."""
 from __future__ import annotations
 
+import os
+from concurrent.futures import Future, ProcessPoolExecutor
+
 from src.constants import CHUNK_SIZE, STREAM_RADIUS
 from src.world.chunk import Chunk
 from src.world.column import CLEARANCE_OPEN, Column
@@ -18,28 +21,188 @@ class WorldMap:
         self.dungeon_tiles: dict[tuple[int, int], dict] = {}
         self.dungeon_explored: set[tuple[int, int]] = set()
         self._landmarks_applied = False
+        self._chunk_gen_queue: list[tuple[int, int]] = []
+        self._chunks_per_frame = max(
+            1, int(os.environ.get("PEPELNY_CHUNKS_PER_FRAME", "2"))
+        )
+        self._init_streaming_state()
         init_world_fields(seed)
         self._ensure_radius(0, 0)
 
-    def _ensure_chunk(self, cx: int, cy: int) -> None:
-        key = (cx, cy)
+    def _init_streaming_state(self) -> None:
+        self._chunk_futures: dict[tuple[int, int], Future] = {}
+        self._chunk_pool: ProcessPoolExecutor | None = None
+        self._runtime_workers = self._runtime_worker_count()
+        self._chunks_loaded_version = 0
+
+    @staticmethod
+    def _runtime_worker_count() -> int:
+        from src.core.parallel_load import chunk_worker_count
+
+        raw = os.environ.get("PEPELNY_RUNTIME_CHUNK_WORKERS", "").strip()
+        if raw:
+            try:
+                return max(0, min(8, int(raw)))
+            except ValueError:
+                pass
+        return 1 if chunk_worker_count() > 1 else 0
+
+    def _pool(self) -> ProcessPoolExecutor | None:
+        if self._runtime_workers <= 0:
+            return None
+        if self._chunk_pool is None:
+            from src.core.parallel_load import _init_worker, _project_root
+
+            self._chunk_pool = ProcessPoolExecutor(
+                max_workers=self._runtime_workers,
+                initializer=_init_worker,
+                initargs=(self.seed, _project_root()),
+            )
+        return self._chunk_pool
+
+    def _apply_chunk(self, key: tuple[int, int], chunk: Chunk) -> None:
         if key not in self.chunks:
+            self.chunks[key] = chunk
+            self._chunks_loaded_version += 1
+
+    def _submit_chunk(self, cx: int, cy: int) -> None:
+        from src.core.parallel_load import _generate_chunk_worker
+
+        key = (cx, cy)
+        if key in self.chunks or key in self._chunk_futures:
+            return
+        pool = self._pool()
+        if pool is None:
+            return
+        self._chunk_futures[key] = pool.submit(_generate_chunk_worker, key)
+
+    def _poll_chunk_futures(self, limit: int) -> int:
+        if not self._chunk_futures:
+            return 0
+        done_keys = [k for k, fut in self._chunk_futures.items() if fut.done()]
+        applied = 0
+        for key in done_keys:
+            if applied >= limit:
+                break
+            fut = self._chunk_futures.pop(key)
+            try:
+                _, chunk = fut.result()
+            except Exception:
+                self._ensure_chunk_sync(key[0], key[1])
+            else:
+                perf = self.perf_stats
+                if perf is not None:
+                    perf.counter("chunks_new")
+                self._apply_chunk(key, chunk)
+            applied += 1
+        return applied
+
+    def chunks_loaded_version(self) -> int:
+        return self._chunks_loaded_version
+
+    def _ensure_chunk_sync(self, cx: int, cy: int) -> None:
+        key = (cx, cy)
+        if key in self.chunks:
+            return
+        perf = self.perf_stats
+        if perf is not None:
+            with perf.measure("chunk_gen"):
+                self.chunks[key] = generate_chunk(cx, cy, self.seed, world_map=self)
+            perf.counter("chunks_new")
+        else:
             self.chunks[key] = generate_chunk(cx, cy, self.seed, world_map=self)
+        self._chunks_loaded_version += 1
+
+    def _ensure_streaming_ready(self) -> None:
+        if not hasattr(self, "_chunk_futures"):
+            self._init_streaming_state()
+
+    def _ensure_chunk(self, cx: int, cy: int) -> None:
+        self._ensure_streaming_ready()
+        key = (cx, cy)
+        if key in self.chunks:
+            return
+        fut = self._chunk_futures.get(key)
+        if fut is not None:
+            if fut.done():
+                self._chunk_futures.pop(key, None)
+                try:
+                    _, chunk = fut.result()
+                except Exception:
+                    self._ensure_chunk_sync(cx, cy)
+                else:
+                    self._apply_chunk(key, chunk)
+            return
+        self._ensure_chunk_sync(cx, cy)
+
+    def _enqueue_missing_chunks(self, cx: int, cy: int) -> None:
+        pending = {(a, b) for a, b in self._chunk_gen_queue}
+        pending.update(self._chunk_futures.keys())
+        for dcy in range(-STREAM_RADIUS, STREAM_RADIUS + 1):
+            for dcx in range(-STREAM_RADIUS, STREAM_RADIUS + 1):
+                key = (cx + dcx, cy + dcy)
+                if key not in self.chunks and key not in pending:
+                    self._chunk_gen_queue.append(key)
+                    pending.add(key)
+
+    def _drain_chunk_queue(self, *, priority: tuple[int, int] | None = None) -> None:
+        if priority and priority not in self.chunks:
+            self._ensure_chunk(priority[0], priority[1])
+            if priority in self._chunk_gen_queue:
+                self._chunk_gen_queue.remove(priority)
+        polled = self._poll_chunk_futures(self._chunks_per_frame)
+        budget = max(0, self._chunks_per_frame - polled)
+        while budget > 0 and self._chunk_gen_queue:
+            key = self._chunk_gen_queue.pop(0)
+            if key in self.chunks:
+                continue
+            if self._pool() is not None:
+                self._submit_chunk(key[0], key[1])
+                budget -= 1
+            else:
+                self._ensure_chunk_sync(key[0], key[1])
+                budget -= 1
 
     def _ensure_radius(self, px: int, py: int):
         cx, cy = px // CHUNK_SIZE, py // CHUNK_SIZE
-        for dcy in range(-STREAM_RADIUS, STREAM_RADIUS + 1):
-            for dcx in range(-STREAM_RADIUS, STREAM_RADIUS + 1):
-                self._ensure_chunk(cx + dcx, cy + dcy)
+        player_chunk = (cx, cy)
+        perf = self.perf_stats
+        if perf is not None:
+            with perf.measure("chunks_stream"):
+                self._enqueue_missing_chunks(cx, cy)
+                self._drain_chunk_queue(priority=player_chunk)
+        else:
+            self._enqueue_missing_chunks(cx, cy)
+            self._drain_chunk_queue(priority=player_chunk)
         if not self._landmarks_applied:
             apply_landmarks(self.chunks, self.seed)
             self._landmarks_applied = True
+
+    def bake_all_tree_solids(self) -> None:
+        from src.world.tree_generator import apply_tree_solids
+
+        anchors: list = []
+        for chunk in list(self.chunks.values()):
+            anchors.extend(chunk.structure_anchors)
+        for anchor in anchors:
+            apply_tree_solids(self, anchor)
+
+    def ensure_chunk_at(self, wx: int, wy: int) -> None:
+        """Ensure only the chunk containing (wx, wy) exists (input-path, not full radius)."""
+        cx, cy, _, _ = self.world_to_chunk(wx, wy)
+        self._ensure_chunk(cx, cy)
 
     def begin_frame(self) -> None:
         self._column_cache = {}
 
     def end_frame(self) -> None:
         self._column_cache = None
+
+    def shutdown(self) -> None:
+        if self._chunk_pool is not None:
+            self._chunk_pool.shutdown(wait=False, cancel_futures=True)
+            self._chunk_pool = None
+        self._chunk_futures.clear()
 
     def world_to_chunk(self, wx: int, wy: int):
         cx = wx // CHUNK_SIZE
@@ -127,6 +290,7 @@ class WorldMap:
             self.dungeon_explored.add((wx, wy))
             return
         cx, cy, lx, ly = self.world_to_chunk(wx, wy)
+        self._ensure_chunk(cx, cy)
         chunk = self.chunks.get((cx, cy))
-        if chunk:
+        if chunk and chunk.in_bounds(lx, ly):
             chunk.mark_explored(lx, ly)

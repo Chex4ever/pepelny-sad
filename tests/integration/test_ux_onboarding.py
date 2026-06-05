@@ -4,7 +4,7 @@ from __future__ import annotations
 
 def test_click_player_opens_sheet(game):
     ow = game.overworld
-    px, py = ow.player.x, ow.player.y
+    px, py = ow.player.tile_pos()
     ow.visible.add((px, py))
     ow.sheet.close()
     ow.interaction.try_examine_world(px, py)

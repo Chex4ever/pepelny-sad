@@ -11,7 +11,7 @@ class DebugWindow(ModalWindow):
     blocks_world_input = False
 
     def __init__(self):
-        super().__init__("DEBUG F4", x=1, y=1, w=52, h=24, visible=False)
+        super().__init__("DEBUG F4", x=1, y=1, w=54, h=30, visible=False)
         self._lines: list[str] = []
 
     def set_lines(self, lines: list[str]) -> None:
@@ -33,4 +33,4 @@ class DebugWindow(ModalWindow):
             if cy + i >= cy + ch - 1:
                 break
             buf.draw_text(cx + 1, cy + i, line[: cw - 2], fg=COLOR_TEXT, bg=COLOR_UI_BG)
-        buf.draw_text(cx + 1, cy + ch - 1, "F4/Esc — закрыть", fg=COLOR_TEXT, bg=COLOR_UI_BG)
+        buf.draw_text(cx + 1, cy + ch - 1, "F4 — закрыть  PEPELNY_PERF=1 — лог в консоль", fg=COLOR_TEXT, bg=COLOR_UI_BG)

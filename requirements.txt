@@ -1,2 +1,3 @@
 pygame-ce>=2.5.0; python_version >= "3.12"
 pygame>=2.5.0; python_version < "3.12"
+moderngl>=5.8

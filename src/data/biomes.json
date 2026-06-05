@@ -4,7 +4,7 @@
     "stencil_id": "grass",
     "climate_center": {"h": 0.5, "m": 0.45},
     "climate_spread": 0.2,
-    "floor_variants": ["grass", "grass_a", "grass_b", "grass_sparse"],
+    "floor_variants": ["grass", "grass", "grass_a", "grass_b"],
     "grass_overlay_variants": ["tuft_1", "tuft_2", "tuft_dry"],
     "grass_overlay_chance": 0.14,
     "bush_variants": ["bush_low", "bush_heather"],

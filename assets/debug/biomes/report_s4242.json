@@ -1,0 +1,94 @@
+{
+  "seed": 4242,
+  "size": 14,
+  "biomes": {
+    "ashen_forest": {
+      "biome_id": "ashen_forest",
+      "seed": 4242,
+      "wx0": 100,
+      "wy0": 100,
+      "w": 14,
+      "h": 14,
+      "forced": true,
+      "trees": false,
+      "floor_variants": {
+        "grass_a": 36,
+        "grass_sparse": 87,
+        "grass": 51,
+        "grass_dry": 22
+      },
+      "internal_holes": 0,
+      "unstamped_holes": 0,
+      "covered_cells": 868,
+      "drawn_cells": 970,
+      "grass_sparse_pct": 44.4
+    },
+    "meadow": {
+      "biome_id": "meadow",
+      "seed": 4242,
+      "wx0": 100,
+      "wy0": 100,
+      "w": 14,
+      "h": 14,
+      "forced": true,
+      "trees": false,
+      "floor_variants": {
+        "grass_sparse": 36,
+        "grass_b": 87,
+        "grass_a": 51,
+        "grass": 22
+      },
+      "internal_holes": 0,
+      "unstamped_holes": 0,
+      "covered_cells": 868,
+      "drawn_cells": 933,
+      "grass_sparse_pct": 18.4
+    },
+    "ridge": {
+      "biome_id": "ridge",
+      "seed": 4242,
+      "wx0": 100,
+      "wy0": 100,
+      "w": 14,
+      "h": 14,
+      "forced": true,
+      "trees": false,
+      "floor_variants": {
+        "grass": 36,
+        "grass_sparse": 87,
+        "grass_dry": 51,
+        "ridge": 22
+      },
+      "internal_holes": 0,
+      "unstamped_holes": 0,
+      "covered_cells": 868,
+      "drawn_cells": 981,
+      "grass_sparse_pct": 44.4
+    },
+    "ruins_edge": {
+      "biome_id": "ruins_edge",
+      "seed": 4242,
+      "wx0": 100,
+      "wy0": 100,
+      "w": 14,
+      "h": 14,
+      "forced": true,
+      "trees": false,
+      "floor_variants": {
+        "grass": 36,
+        "grass_dry": 87,
+        "grass_sparse": 51,
+        "ruins": 22
+      },
+      "internal_holes": 0,
+      "unstamped_holes": 0,
+      "covered_cells": 868,
+      "drawn_cells": 981,
+      "grass_sparse_pct": 26.0
+    }
+  },
+  "worst_holes": {
+    "biome": "",
+    "count": 0
+  }
+}

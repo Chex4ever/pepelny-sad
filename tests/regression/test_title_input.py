@@ -67,6 +67,10 @@ g._update_title()
 
 while g.transition.active:
     g.transition.update(300)
+while g.loading.active:
+    g.loading.tick(g, 500)
+while g.transition.active:
+    g.transition.update(300)
 
 assert g.scene == "intro", g.scene
 assert g.overworld is not None

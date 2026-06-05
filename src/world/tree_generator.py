@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import random
 
+from src.constants import CHUNK_SIZE
 from src.world.column import Solid
 from src.world.structures import StructureAnchor
 
@@ -44,7 +45,7 @@ def build_tree_solids(params: dict) -> list[tuple[int, int, Solid]]:
             Solid(0.0, trunk_z, blocks_movement=True, blocks_los=True, stencil_id=trunk_stencil),
         ),
         (
-            lean,
+            0,
             0,
             Solid(trunk_z * 0.85, height_m, blocks_movement=False, blocks_los=True, stencil_id=canopy_stencil),
         ),
@@ -90,6 +91,20 @@ def apply_tree_solids(world_map, anchor: StructureAnchor) -> None:
         cx, cy, lx, ly = world_map.world_to_chunk(tw, th)
         world_map._ensure_chunk(cx, cy)
         world_map.chunks[(cx, cy)].add_solid(lx, ly, solid)
+
+
+def bake_tree_anchors_on_chunk(chunk) -> None:
+    """Bake tree anchors into one chunk (biome/meadow preview without WorldMap)."""
+    base_wx = chunk.cx * CHUNK_SIZE
+    base_wy = chunk.cy * CHUNK_SIZE
+    for anchor in chunk.structure_anchors:
+        if anchor.structure_id != "tree" or not anchor.params:
+            continue
+        for dx, dy, solid in build_tree_solids(anchor.params):
+            lx = anchor.wx + dx - base_wx
+            ly = anchor.wy + dy - base_wy
+            if chunk.in_bounds(lx, ly):
+                chunk.add_solid(lx, ly, solid)
 
 
 def place_tree_anchor(chunk, wx: int, wy: int, biome: dict, seed: int, world_map=None) -> StructureAnchor:

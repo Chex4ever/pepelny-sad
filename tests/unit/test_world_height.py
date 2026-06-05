@@ -42,8 +42,10 @@ def test_neighbor_canopy_only_walkable_for_player():
         "thick_trunk": False,
     }
     solids = build_tree_solids(params)
-    trunk_cell = [s for dx, dy, s in solids if dx == 0 and dy == 0][0]
-    canopy_neighbor = [s for dx, dy, s in solids if dx == 1 and dy == 0][0]
+    trunk_cell = [s for dx, dy, s in solids if dx == 0 and dy == 0 and s.blocks_movement][0]
+    canopy_neighbor = [
+        s for dx, dy, s in solids if (dx, dy) != (0, 0) and not s.blocks_movement
+    ][0]
     trunk_col = _col_with_solids([trunk_cell])
     canopy_col = _col_with_solids([canopy_neighbor])
     assert trunk_col.clearance_m() < 1.8

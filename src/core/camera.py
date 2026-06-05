@@ -1,4 +1,4 @@
-"""Viewport camera with optional pan offset."""
+"""Viewport camera with optional pan offset and smooth follow."""
 from __future__ import annotations
 
 
@@ -7,19 +7,27 @@ class Camera:
         self.view_w = view_w
         self.view_h = view_h
         self.pan_limit = pan_limit if pan_limit is not None else max(view_w, view_h) // 3
-        self._center_x = 0
-        self._center_y = 0
+        self._center_x = 0.0
+        self._center_y = 0.0
         self.pan_x = 0
         self.pan_y = 0
 
-    def center_on(self, world_x: int, world_y: int) -> None:
-        self._center_x = world_x
-        self._center_y = world_y
+    def center_on(self, world_x: float, world_y: float) -> None:
+        self._center_x = float(world_x)
+        self._center_y = float(world_y)
+
+    def follow_smooth(self, world_x: float, world_y: float, dt_ms: int, *, rate: float = 14.0) -> None:
+        t = min(1.0, rate * (dt_ms / 1000.0))
+        self._center_x += (float(world_x) - self._center_x) * t
+        self._center_y += (float(world_y) - self._center_y) * t
 
     def view_origin(self) -> tuple[int, int]:
-        wx0 = self._center_x - self.view_w // 2 + self.pan_x
-        wy0 = self._center_y - self.view_h // 2 + self.pan_y
+        wx0 = int(self._center_x) - self.view_w // 2 + self.pan_x
+        wy0 = int(self._center_y) - self.view_h // 2 + self.pan_y
         return wx0, wy0
+
+    def focus_float(self) -> tuple[float, float]:
+        return self._center_x + self.pan_x, self._center_y + self.pan_y
 
     def set_pan(self, px: int, py: int) -> None:
         self.pan_x = max(-self.pan_limit, min(self.pan_limit, px))
@@ -36,9 +44,19 @@ class Camera:
         cell_h: int,
         base_pan_x: int,
         base_pan_y: int,
+        *,
+        iso: bool = False,
     ) -> None:
-        px = base_pan_x - round(total_dx_px / cell_w)
-        py = base_pan_y - round(total_dy_px / cell_h)
+        if iso:
+            from src.constants import ISO_STEP_X, ISO_STEP_Y
+
+            step_x_px = max(1, ISO_STEP_X * cell_w)
+            step_y_px = max(1, ISO_STEP_Y * cell_h)
+            px = base_pan_x - round(total_dx_px / step_x_px)
+            py = base_pan_y - round(total_dy_px / step_y_px)
+        else:
+            px = base_pan_x - round(total_dx_px / cell_w)
+            py = base_pan_y - round(total_dy_px / cell_h)
         self.set_pan(px, py)
 
     def is_panned(self) -> bool:

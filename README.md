@@ -4,7 +4,7 @@
 
 Демо-игра на Pygame в духе Undertale × COGMIND × Terraria: исследование чанкового мира, Soul Scan в боях, крафт и ASCII-портреты.
 
-Текущая версия: **0.2.8** (см. файл [`VERSION`](VERSION)).
+Текущая версия: **0.3.0** (см. файл [`VERSION`](VERSION)).
 
 ## Установка
 
@@ -21,7 +21,7 @@ Python 3.11+, Pygame 2.5+. Для CI и сборки релизов исполь
 
 | Переменная | Значение | Описание |
 |------------|----------|----------|
-| `PEPELNY_RENDER` | `iso` (по умолчанию) / `classic` | Изометрическая карта (Stone Story style) или 1 символ на тайл |
+| `PEPELNY_RENDER` | `iso` (по умолчанию) / `gpu` / `classic` | Изометрия (CPU debug или GPU через moderngl), либо 1 символ на тайл |
 | `PEPELNY_LANG` | `ru` / `en` | Язык интерфейса и текстов |
 
 Прототипы тайлов: `python tools/generate_tile_stencils.py grass_dry , --size 2`
@@ -83,7 +83,8 @@ python -m pytest --cov=src --cov-report=term-missing
 
 Только unit-тесты: `python -m pytest tests/unit`  
 Только интеграционные: `python -m pytest tests/integration -m integration`  
-**Регрессия (порядок импортов / `main.py`):** `python -m pytest tests/regression -m regression`
+**Регрессия (порядок импортов / `main.py`):** `python -m pytest tests/regression -m regression`  
+**Производительность (бюджеты кадра / FOV):** `python -m pytest tests/performance/ -q` — см. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)
 
 > `conftest.py` вызывает `init_paths()` заранее — это удобно для unit/integration, но **скрывает** баги вроде `DATA_DIR=None`. Регрессионные тесты запускаются в отдельном subprocess без ранней инициализации.
 

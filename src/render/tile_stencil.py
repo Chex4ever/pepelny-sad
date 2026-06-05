@@ -130,7 +130,7 @@ CHAR_STENCIL: dict[str, str] = {
     ">": "stairs_down",
     "<": "stairs_up",
     "!": "battle",
-    "@": "trigger",
+    "@": "elder_station",
     "l": "torch",
     "i": "torch",
     "1": "floor",
@@ -172,9 +172,18 @@ def stamp(
     bg: tuple[int, int, int] | None = None,
     light: float = 1.0,
     fog: int = 0,
+    fill_iso_footprint: bool = False,
 ) -> None:
     use_fg = fg if fg is not None else stencil.default_fg
     use_bg = bg if bg is not None else stencil.default_bg
+    if fill_iso_footprint:
+        from src.render.iso_projector import IsoProjector
+
+        fill_ch = "y" if use_fg[1] > use_fg[0] else "."
+        for fx, fy in IsoProjector().footprint_char_cells(anchor_x, anchor_y):
+            if fog:
+                buf.set_fog(fx, fy, fog)
+            buf.set(fx, fy, fill_ch, fg=use_fg, bg=use_bg, light=light)
     for g in stencil.glyphs:
         x, y = anchor_x + g.dx, anchor_y + g.dy
         if fog:

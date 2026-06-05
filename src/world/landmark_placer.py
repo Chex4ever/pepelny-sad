@@ -40,11 +40,11 @@ def stamp_landmark(chunk: Chunk, landmark_id: str, ox: int = 0, oy: int = 0):
                 elif ch == "!":
                     fg = (255, 100, 100)
                 elif ch == "&":
-                    fg = (200, 160, 80)
+                    fg = (220, 180, 100)
                 elif ch == ">":
                     fg = (120, 200, 255)
                 elif ch == "@":
-                    fg = (255, 220, 120)
+                    fg = (255, 230, 160)
                 chunk.set(tx, ty, ch, fg=fg, bg=bg)
 
 

@@ -36,7 +36,11 @@ def test_mouse_grid_maps_pixels():
     assert gy == 5
 
 
-def test_mouse_world_respects_map_bounds():
+def test_mouse_world_respects_map_bounds(monkeypatch):
+    monkeypatch.setenv("PEPELNY_RENDER", "classic")
+    from src.render.render_mode import init_render_mode_from_env
+
+    init_render_mode_from_env()
     inp = InputState()
     inp.mouse_pos = (0, CELL_H * 2)
     assert inp.mouse_world(10, 20, map_origin_y=0) == (10, 22)

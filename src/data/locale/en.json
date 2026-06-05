@@ -103,6 +103,18 @@
       ]
     }
   },
+  "loading": {
+    "title": " LOADING ",
+    "preparing": "Preparing new game…",
+    "init": "Initializing…",
+    "profile": "Creating hero and inventory…",
+    "terrain": "World fields and biomes…",
+    "chunks": "Generating map around spawn…",
+    "landmarks": "Placing landmarks…",
+    "overworld": "Building exploration scene…",
+    "done": "Ready.",
+    "wait": "Please wait"
+  },
   "intro": {
     "title": " ASH GARDEN ",
     "lines": [

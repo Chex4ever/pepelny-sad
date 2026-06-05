@@ -43,8 +43,12 @@ class Chunk:
             self.bg[i] = bg
         self.floor_stencils[i] = stencil_id
 
-    def set(self, lx: int, ly: int, ch: str, fg=None, bg=None):
-        self.set_floor(lx, ly, ch, fg, bg)
+    def set(self, lx: int, ly: int, ch: str, fg=None, bg=None, *, stencil_id: str | None = None):
+        if stencil_id is None:
+            from src.render.tile_stencil import CHAR_STENCIL
+
+            stencil_id = CHAR_STENCIL.get(ch, "grass")
+        self.set_floor(lx, ly, ch, fg, bg, stencil_id=stencil_id)
 
     def add_solid(self, lx: int, ly: int, solid: Solid) -> None:
         if not self.in_bounds(lx, ly):
@@ -74,9 +78,15 @@ class Chunk:
 
     def to_column(self, lx: int, ly: int) -> Column:
         i = self.idx(lx, ly)
+        floor_ch = self.tiles[i]
+        floor_sid = self.floor_stencils[i]
+        if floor_ch not in ".,":
+            from src.render.tile_stencil import CHAR_STENCIL
+
+            floor_sid = CHAR_STENCIL.get(floor_ch, floor_sid)
         col = Column(
-            floor_ch=self.tiles[i],
-            floor_stencil_id=self.floor_stencils[i],
+            floor_ch=floor_ch,
+            floor_stencil_id=floor_sid,
             fg=self.fg[i],
             bg=self.bg[i],
         )

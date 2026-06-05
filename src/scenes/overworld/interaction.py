@@ -27,7 +27,7 @@ class OverworldInteraction:
     def interact(self) -> None:
         ow = self.scene
         layer = ow.game.world_state.layer
-        px, py = ow.player.x, ow.player.y
+        px, py = ow.player.tile_pos()
         for dx, dy in [(0, 0), ow.player.facing, (1, 0), (-1, 0), (0, 1), (0, -1)]:
             tx, ty = px + dx, py + dy
             ch, _, _ = ow.game.world_map.get_tile(tx, ty, layer)
@@ -116,7 +116,7 @@ class OverworldInteraction:
         ow = self.scene
         if (wx, wy) not in ow.visible:
             return
-        if (wx, wy) == (ow.player.x, ow.player.y):
+        if (wx, wy) == ow.player.tile_pos():
             ow.sheet.show()
             ow.sheet.bind_profile(ow.game.profile)
             if ow.game.tutorial:
