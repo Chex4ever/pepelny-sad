@@ -17,19 +17,27 @@ def test_camera_pan_from_total_drag():
     assert cam.pan_y == 0
 
 
+def test_camera_iso_pan_from_drag():
+    cam = Camera(22, 16)
+    cam.center_on(50, 50)
+    cam.pan_from_drag(40, 32, 10, 16, 0, 0, iso=True)
+    assert cam.pan_x == -2
+    assert cam.pan_y == -2
+
+
 def test_camera_default_pan_limit_is_generous():
     cam = Camera(100, MAP_VIEW_H)
     assert cam.pan_limit >= 30
 
 
-def test_pan_persists_after_move(game):
+def test_pan_resets_on_move(game):
     ow = game.overworld
     ow.camera.pan_by(5, -3)
     inp = FakeInput(pressed={pygame.K_w})
     game.input = inp
-    ow.input_router.handle_input(inp)
-    assert ow.camera.pan_x == 5
-    assert ow.camera.pan_y == -3
+    ow.handle_input(inp, dt_ms=250)
+    assert ow.camera.pan_x == 0
+    assert ow.camera.pan_y == 0
 
 
 def test_pan_works_with_log_visible_and_mouse_over_log(game):

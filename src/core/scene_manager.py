@@ -45,11 +45,11 @@ class SceneManager:
         if action == "dungeon_enter":
             self.game.world_state.layer = "dungeon"
             ensure_dungeon(self.game.world_state, self.game.world_map)
-            self.game.overworld.player.x, self.game.overworld.player.y = 2, 2
+            self.game.overworld.player.set_tile(2, 2)
             self.game.overworld.log.add("Спуск в подземелье.")
         elif action == "surface_exit":
             self.game.world_state.layer = "surface"
-            self.game.overworld.player.x, self.game.overworld.player.y = 80, 24
+            self.game.overworld.player.set_tile(80, 24)
             self.game.overworld.log.add("Выход на поверхность.")
         if self.game.overworld:
             self.game.music.on_layer(self.game.world_state.layer)
@@ -113,6 +113,16 @@ class SceneManager:
             g._render_frame()
             return
 
+        if g.scene == "loading":
+            g.perf.begin_frame()
+            with g.perf.measure("loading_step"):
+                g.loading.tick(g, dt_ms)
+            g.loading.draw(g)
+            with g.perf.measure("present"):
+                g._render_frame()
+            g.perf.end_frame()
+            return
+
         g.transition.update(dt_ms)
         g.audio.update(dt_ms)
 
@@ -167,22 +177,25 @@ class SceneManager:
             g._update_title()
             g._draw_title()
         elif g.scene == "intro":
-            g.intro.update(dt_ms, g.audio)
-            if g.intro.handle_input(inp):
-                self.start_transition("overworld")
+            if not g.transition.blocks_scene_logic():
+                g.intro.update(dt_ms, g.audio)
+                if g.intro.handle_input(inp):
+                    self.start_transition("overworld")
             g.intro.draw(g.buffer)
+            if g.transition.active:
+                g._render_frame()
+                return
         elif g.scene == "overworld" and g.overworld:
             g.perf.begin_frame()
-            g.overworld.update(dt_ms)
+            if not ui_blocked:
+                g.overworld.handle_input(inp, dt_ms)
+                self.apply_pending_action()
             if getattr(g, "tutorial", None):
                 g.tutorial.update_frame()
                 if getattr(g, "tutorial_window", None):
                     g.tutorial_window.set_text(g.tutorial.current_text())
             g.music.on_weather(g.overworld.weather.active)
             g.music.on_turn(g.world_state.turn_count)
-            if not ui_blocked:
-                g.overworld.handle_input(inp)
-                self.apply_pending_action()
             nb = g.overworld.needs_battle
             if nb:
                 g.enemy_id_boss = nb == "warden" and g.world_state.layer == "dungeon"
@@ -196,10 +209,14 @@ class SceneManager:
                 )
                 self.start_transition("battle")
             else:
+                g.overworld.prepare_draw(dt_ms)
+                g.overworld.draw(g.buffer, inp)
+                g._render_frame()
                 if debug_w.visible:
                     debug_w.set_lines(g.overworld.debug_lines(g.fps))
-                g.overworld.draw(g.buffer, inp)
+                g.overworld.update_deferred(dt_ms)
             g.perf.end_frame()
+            return
         elif g.scene == "battle" and g.battle:
             g.battle.update()
             if not ui_blocked:

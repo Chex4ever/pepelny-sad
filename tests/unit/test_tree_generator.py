@@ -2,7 +2,13 @@
 from __future__ import annotations
 
 from src.data.art_loader import load_biomes
-from src.world.tree_generator import GLOBAL_HEIGHT_MAX, GLOBAL_HEIGHT_MIN, roll_tree_params, tree_anchor
+from src.world.tree_generator import (
+    GLOBAL_HEIGHT_MAX,
+    GLOBAL_HEIGHT_MIN,
+    build_tree_solids,
+    roll_tree_params,
+    tree_anchor,
+)
 
 
 def test_tree_height_in_range():
@@ -30,3 +36,15 @@ def test_tree_anchor_has_params():
     anchor = tree_anchor(5, 5, load_biomes()["ashen_forest"], 1)
     assert anchor.structure_id == "tree"
     assert "height_m" in anchor.params
+
+
+def test_primary_canopy_shares_trunk_cell():
+    biome = load_biomes()["meadow"]
+    params = roll_tree_params(biome, 99, 12, 34)
+    params["lean"] = 2
+    solids = build_tree_solids(params)
+    trunk = [(dx, dy) for dx, dy, s in solids if "trunk" in (s.stencil_id or "")]
+    canopy_anchor = [(dx, dy) for dx, dy, s in solids if "canopy" in (s.stencil_id or "")]
+    assert (0, 0) in trunk
+    assert (0, 0) in canopy_anchor
+    assert (2, 0) not in canopy_anchor

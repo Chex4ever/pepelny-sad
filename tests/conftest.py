@@ -34,6 +34,17 @@ def _paths_ready():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _reset_render_mode(monkeypatch):
+    """Default classic render for unit/integration; perf tests override via fixture."""
+    monkeypatch.setenv("PEPELNY_RENDER", "classic")
+    from src.render.render_mode import init_render_mode_from_env
+
+    init_render_mode_from_env()
+    yield
+    init_render_mode_from_env()
+
+
 @pytest.fixture
 def world_state():
     from src.world.world_state import WorldState
@@ -244,6 +255,20 @@ class FakeInput:
         if self.any_pressed(pygame.K_RIGHT, pygame.K_d):
             return (1, 0)
         return None
+
+    def dir_key_pressed(self):
+        return self.dir_key()
+
+    def dir_key_screen_pressed(self):
+        return self.dir_key()
+
+    def dir_key_iso_pressed(self):
+        from src.render.iso_projector import IsoProjector
+
+        d = self.dir_key()
+        if d is None:
+            return None
+        return d
 
 
 @pytest.fixture

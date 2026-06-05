@@ -3,10 +3,11 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra --strict-markers"
 markers = [
+    "unit: fast module-level tests",
     "integration: end-to-end tests across multiple modules",
     "regression: startup/import-order bugs; run in isolated subprocess",
     "performance: overworld frame timing benchmarks",
-    "slow: long-running benchmarks (iso pan); exclude with -m 'not slow'",
+    "slow: walk/playthrough benchmarks; exclude with -m 'not slow'",
 ]
 
 [tool.coverage.run]

@@ -1,0 +1,15 @@
+{
+  "object_id": "sprite:player",
+  "label": "player",
+  "glyphs": "glyphs=6 chars=/@\\|",
+  "wx0": 0,
+  "wy0": 0,
+  "patch": 12,
+  "seed": 1,
+  "floor_biome": "meadow",
+  "show_floor": true,
+  "anchor_wx": 6,
+  "anchor_wy": 6,
+  "render_path": "gpu",
+  "png": "C:\\iridi\\utb\\assets\\debug\\objects\\object_player_s1_meadow_gpu.png"
+}

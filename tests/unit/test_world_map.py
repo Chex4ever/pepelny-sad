@@ -1,18 +1,18 @@
 """Tests for world generation."""
 from src.constants import CHUNK_SIZE
-from src.world.surface_gen import generate_chunk
+from src.world.surface_gen import generate_chunk_isolated
 from src.world.world_map import WorldMap
 
 
 def test_same_seed_same_chunk():
-    a = generate_chunk(1, 2, seed=999)
-    b = generate_chunk(1, 2, seed=999)
+    a = generate_chunk_isolated(1, 2, seed=999)
+    b = generate_chunk_isolated(1, 2, seed=999)
     assert a.tiles == b.tiles
 
 
 def test_different_seed_different_chunk():
-    a = generate_chunk(0, 0, seed=1)
-    b = generate_chunk(0, 0, seed=2)
+    a = generate_chunk_isolated(0, 0, seed=1)
+    b = generate_chunk_isolated(0, 0, seed=2)
     assert a.tiles != b.tiles
 
 

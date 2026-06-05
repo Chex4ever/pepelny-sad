@@ -18,6 +18,7 @@ class WorldState:
     dungeon_entered: bool = False
     boss_cleared: bool = False
     turn_count: int = 0
+    world_time_s: float = 0.0
     checkpoint: dict | None = None
     defeated_battles: set = field(default_factory=set)
     tutorial_step: int = 0

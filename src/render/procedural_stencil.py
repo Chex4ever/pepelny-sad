@@ -28,7 +28,11 @@ def procedural_tree_canopy(variant: int, height_bucket: int, radius: int) -> Til
         width = 2 + min(level + radius, 6) * 2
         pad = max(0, 4 - level)
         ch = "T" if variant % 2 == 0 else "Y"
-        core = (ch * width)[:width]
+        if level == 0 and width >= 3:
+            inner = ch * max(1, width - 2)
+            core = (" " + inner + " ")[:width]
+        else:
+            core = (ch * width)[:width]
         rows.append(" " * pad + core)
     fg = (70, 110, 70) if variant < 3 else (90, 90, 85)
     bg = (20, 35, 20)
@@ -38,7 +42,7 @@ def procedural_tree_canopy(variant: int, height_bucket: int, radius: int) -> Til
 @lru_cache(maxsize=32)
 def procedural_tree_trunk(thick: bool) -> TileStencil:
     if thick:
-        lines = [" | ", "|||", "|||"]
+        lines = [" | ", "| |", "| |", " | "]
     else:
         lines = [" | ", " | ", " | "]
     return _lines_to_glyphs(lines, (90, 70, 50), (30, 25, 20))

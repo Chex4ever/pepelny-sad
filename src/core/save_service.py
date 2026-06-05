@@ -25,6 +25,7 @@ class SaveService:
             "scan_flags": list(game.world_state.scan_flags),
             "story_flags": list(game.world_state.story_flags),
             "turn_count": game.world_state.turn_count,
+            "world_time_s": game.world_state.world_time_s,
             "dungeon_entered": game.world_state.dungeon_entered,
             "boss_cleared": game.world_state.boss_cleared,
             "defeated_battles": list(game.world_state.defeated_battles),
@@ -35,7 +36,10 @@ class SaveService:
             "equipment": dict(game.profile.equipment.slots),
             "modules": list(game.profile.installed_modules),
             "player_pos": (
-                (game.overworld.player.x, game.overworld.player.y) if game.overworld else (20, 24)
+                game.overworld.player.tile_pos() if game.overworld else (20, 24)
+            ),
+            "player_render": (
+                (game.overworld.player.x, game.overworld.player.y) if game.overworld else (20.0, 24.0)
             ),
         }
 
@@ -50,6 +54,7 @@ class SaveService:
         game.world_state.scan_flags = set(data.get("scan_flags", []))
         game.world_state.story_flags = set(data.get("story_flags", []))
         game.world_state.turn_count = data.get("turn_count", 0)
+        game.world_state.world_time_s = float(data.get("world_time_s", game.world_state.turn_count))
         game.world_state.dungeon_entered = data.get("dungeon_entered", False)
         game.world_state.boss_cleared = data.get("boss_cleared", False)
         game.world_state.defeated_battles = set(tuple(x) for x in data.get("defeated_battles", []))
@@ -69,4 +74,7 @@ class SaveService:
         game.profile.refresh_capacity()
         game.overworld = OverworldScene(game)
         px, py = data.get("player_pos", (20, 24))
-        game.overworld.player.x, game.overworld.player.y = px, py
+        game.overworld.player.set_tile(int(px), int(py))
+        rx, ry = data.get("player_render", (float(px), float(py)))
+        game.overworld.player.x = float(rx)
+        game.overworld.player.y = float(ry)

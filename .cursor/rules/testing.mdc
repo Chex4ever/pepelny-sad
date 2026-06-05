@@ -9,14 +9,16 @@ alwaysApply: true
 
 - **`python -m pytest`** — все тесты зелёные до push/merge
 - Новый или изменённый код **сопровождается тестами** — без исключений «потом добавим»
+- **`python -m pytest tests/performance/ -q`** — обязательно, если затронуты overworld, рендер, FOV, чанки, ввод или perf HUD. **PR не мержить**, если perf-тесты красные или бюджеты нарушены без явного обоснования в описании PR
 
-## Три уровня
+## Четыре уровня
 
 | Уровень | Папка | Когда писать |
 |---------|-------|--------------|
 | **Unit** | `tests/unit/` | Каждый модуль/класс/функция с нетривиальной логикой: чистые функции, парсеры, FOV, input, UI-хелперы, save, crafting |
 | **Integration** | `tests/integration/` | Сценарии через несколько модулей: overworld flow, battle, UI flow, audio hooks, game loop |
 | **Regression** | `tests/regression/` | **Каждый исправленный баг** — тест, который падает до фикса и проходит после; startup order, input, импорты |
+| **Performance** | `tests/performance/` | Изменения в overworld draw/update, FOV, GPU/iso рендере, streaming чанков, locomotion — не ломать бюджеты (см. `docs/PERFORMANCE.md`) |
 
 ## Правила написания
 
@@ -31,6 +33,7 @@ alwaysApply: true
 - [ ] Unit-покрытие для изменённой логики
 - [ ] Integration — если затронуты сцены или сквозной flow
 - [ ] Regression — если это bugfix
+- [ ] **Performance** — если затронуты рендер/FOV/чанки/ввод (`tests/performance/`)
 - [ ] `pytest` локально и в CI
 
 ## Команды
@@ -40,4 +43,8 @@ python -m pytest                  # всё
 python -m pytest tests/unit       # только unit
 python -m pytest tests/integration -m integration
 python -m pytest tests/regression -m regression
+python -m pytest tests/performance/ -q   # бюджеты кадра и FOV
+python scripts/run_perf_benchmark.py   # отчёт + baseline JSON
 ```
+
+Подробнее: [`docs/PERFORMANCE.md`](../docs/PERFORMANCE.md).

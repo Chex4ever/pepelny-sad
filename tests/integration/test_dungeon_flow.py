@@ -8,7 +8,7 @@ from src.world.dungeon_stitcher import ensure_dungeon
 def test_dungeon_layer_transition(game):
     game.world_state.layer = "dungeon"
     ensure_dungeon(game.world_state, game.world_map)
-    game.overworld.player.x, game.overworld.player.y = 2, 2
+    game.overworld.player.set_tile(2, 2)
 
     ch, _, _ = game.world_map.get_tile(2, 2, "dungeon")
     assert ch != "░"

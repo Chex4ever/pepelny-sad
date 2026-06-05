@@ -32,3 +32,6 @@ jobs:
 
       - name: Run tests
         run: python -m pytest tests/ -q
+
+      - name: Performance budgets
+        run: python -m pytest tests/performance/ -q

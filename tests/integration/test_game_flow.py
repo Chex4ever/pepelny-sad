@@ -21,21 +21,20 @@ def test_new_game_initial_state():
 
 @pytest.mark.integration
 def test_serialize_restore_roundtrip(game):
-    game.overworld.player.x = 55
-    game.overworld.player.y = 33
+    game.overworld.player.set_tile(55, 33)
     game.profile.hp = 17
     game.world_state.companions.append("whisper_companion")
     data = game.serialize_state()
 
     game.restore_state(data)
     assert game.profile.hp == 17
-    assert game.overworld.player.x == 55
+    assert game.overworld.player.tile_x == 55
     assert "whisper_companion" in game.world_state.companions
 
 
 @pytest.mark.integration
 def test_save_load_via_game_api(game, save_path):
-    game.overworld.player.x = 40
+    game.overworld.player.set_tile(40, game.overworld.player.tile_y)
     game.profile.hp = 12
     save_game(game.serialize_state())
 
@@ -43,21 +42,22 @@ def test_save_load_via_game_api(game, save_path):
     game2.restore_state(load_game())
 
     assert game2.profile.hp == 12
-    assert game2.overworld.player.x == 40
+    assert game2.overworld.player.tile_x == 40
 
 
 @pytest.mark.integration
 def test_overworld_update_and_draw(game, screen_buffer):
-    game.overworld.update()
+    game.overworld.prepare_draw()
+    game.overworld.update_deferred()
     game.overworld.draw(screen_buffer)
     assert any(ch == "@" for ch in screen_buffer.chars)
 
 
 @pytest.mark.integration
 def test_overworld_movement_changes_position(game):
-    start = (game.overworld.player.x, game.overworld.player.y)
-    game.overworld.handle_input(FakeInput(pressed={pygame.K_d}))
-    assert (game.overworld.player.x, game.overworld.player.y) != start
+    start = game.overworld.player.tile_pos()
+    game.overworld.handle_input(FakeInput(pressed={pygame.K_d}), dt_ms=250)
+    assert game.overworld.player.tile_pos() != start
 
 
 @pytest.mark.integration

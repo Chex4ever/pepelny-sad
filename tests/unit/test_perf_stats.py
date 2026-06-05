@@ -19,3 +19,16 @@ def test_measure_accumulates():
         pass
     perf.end_frame()
     assert perf.timer_ms("foo") >= 0.0
+
+
+def test_profile_lines_sorted():
+    perf = PerfStats()
+    perf.begin_frame()
+    with perf.measure("fov_los"):
+        pass
+    perf._timers["gpu_map"] = 50.0
+    perf._timers["fov_los"] = 10.0
+    perf.end_frame()
+    lines = perf.profile_lines()
+    assert any("Профиль кадра" in ln for ln in lines)
+    assert any("GPU" in ln for ln in lines)

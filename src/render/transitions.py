@@ -12,13 +12,21 @@ class TransitionManager:
         self.elapsed_ms = 0
         self.pending_scene: str | None = None
         self.on_midpoint = None
+        self._auto_fade_in = True
 
-    def start(self, mode: str = "out", pending_scene: str | None = None, callback=None):
+    def start(self, mode: str = "out", pending_scene: str | None = None, callback=None, *, auto_fade_in: bool = True):
         self.active = True
         self.mode = mode
         self.elapsed_ms = 0
         self.pending_scene = pending_scene
         self.on_midpoint = callback
+        self._auto_fade_in = auto_fade_in
+
+    def start_fade_out(self, callback) -> None:
+        self.start("out", callback=callback, auto_fade_in=False)
+
+    def start_fade_in(self) -> None:
+        self.start("in", auto_fade_in=False)
 
     def update(self, dt_ms: int) -> str | None:
         if not self.active:
@@ -31,9 +39,14 @@ class TransitionManager:
             scene = self.pending_scene
             if self.on_midpoint:
                 self.on_midpoint()
-            self.mode = "in"
-            self.elapsed_ms = 0
-            self.pending_scene = None
+            if self._auto_fade_in:
+                self.mode = "in"
+                self.elapsed_ms = 0
+                self.pending_scene = None
+            else:
+                self.active = False
+                self.elapsed_ms = 0
+                self.pending_scene = None
             return scene
         self.active = False
         self.elapsed_ms = 0
@@ -49,5 +62,8 @@ class TransitionManager:
         return int(255 * t)
 
     def blocks_input(self) -> bool:
-        # Block only while fading out; fade-in stays interactive.
         return self.active and self.mode == "out"
+
+    def blocks_scene_logic(self) -> bool:
+        """Block scene update/input during any active fade (e.g. intro typewriter)."""
+        return self.active

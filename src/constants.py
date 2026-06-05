@@ -27,13 +27,25 @@ MAP_VIEW_TILES_H = 16
 ISO_STEP_X = 2
 ISO_STEP_Y = 1
 ISO_SKY_ROWS = 2
-ISO_ORIGIN_X = 50
-ISO_ORIGIN_Y = MAP_ORIGIN_Y + ISO_SKY_ROWS + 2
+ISO_ORIGIN_X = SCREEN_W // 2
+# Vertical center of map band (below sky, above status strip)
+ISO_MAP_BOTTOM_Y = SCREEN_H - STATUS_STRIP_H - 1
+ISO_ORIGIN_Y = (ISO_SKY_ROWS + ISO_MAP_BOTTOM_Y) // 2
+# LOS radius for live visibility (fog + draw); explored map is persistent (no r=100 LOS).
+VISIBLE_LOS_RADIUS_SURFACE = 32
+# Legacy name kept for tests/docs comparing old raycast budget at r=100.
+SURFACE_FOV_RADIUS_TILES = 100
+# Smooth locomotion (tiles per second between grid cells).
+PLAYER_MOVE_SPEED_TPS = 8.0
+# Held-key repeat before smooth stride takes over (ms between grid steps if not moving).
+INPUT_REPEAT_INITIAL_MS = 120
+INPUT_REPEAT_MS = 80
 ISO_TILE_PIXEL_W = ISO_STEP_X * CELL_W
 ISO_TILE_PIXEL_H = ISO_STEP_Y * CELL_H
 ISO_Z_CHARS_PER_M = 1
 TILE_METERS = 1.0
 DEFAULT_PLAYER_HEIGHT_M = 1.8
+ENTITY_DRAW_Z_M = DEFAULT_PLAYER_HEIGHT_M * 0.55
 
 CHUNK_SIZE = 32
 WORLD_RADIUS_CHUNKS = 12

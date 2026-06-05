@@ -1,0 +1,139 @@
+{
+  "render_mode": "iso",
+  "seed": 4242,
+  "frames_total": 55,
+  "frames_measured": 40,
+  "player_start": [
+    20,
+    24
+  ],
+  "player_end": [
+    47,
+    51
+  ],
+  "chunks_loaded": 64,
+  "mean_frame_ms": 122.22584250193904,
+  "p95_frame_ms": 182.65310002607293,
+  "max_frame_ms": 207.20830000936985,
+  "stages": [
+    {
+      "key": "ow_draw",
+      "label": "Draw overworld",
+      "mean_ms": 116.93256000071415,
+      "max_ms": 206.8563999782782,
+      "share_pct": 95.66926077753081
+    },
+    {
+      "key": "map_draw",
+      "label": "Карта: в буфер",
+      "mean_ms": 116.01299499961897,
+      "max_ms": 206.07030001701787,
+      "share_pct": 94.91691169793204
+    },
+    {
+      "key": "map_queue",
+      "label": "Карта: draw queue",
+      "mean_ms": 14.982554996095132,
+      "max_ms": 60.24930000421591,
+      "share_pct": 12.258090997292527
+    },
+    {
+      "key": "fov",
+      "label": "FOV (всего)",
+      "mean_ms": 9.774700002162717,
+      "max_ms": 20.51440000650473,
+      "share_pct": 7.99724493779427
+    },
+    {
+      "key": "fov_los",
+      "label": "FOV: LOS",
+      "mean_ms": 9.25740999809932,
+      "max_ms": 19.277599989436567,
+      "share_pct": 7.574020197858285
+    },
+    {
+      "key": "ow_prepare",
+      "label": "ow_prepare",
+      "mean_ms": 4.906772499089129,
+      "max_ms": 20.546599989756942,
+      "share_pct": 4.014513132941821
+    },
+    {
+      "key": "map_fog",
+      "label": "Карта: fog",
+      "mean_ms": 1.8481899991456885,
+      "max_ms": 3.6856000078842044,
+      "share_pct": 1.51211066441728
+    },
+    {
+      "key": "fov_mark",
+      "label": "FOV: explored",
+      "mean_ms": 0.46783999423496425,
+      "max_ms": 1.136799983214587,
+      "share_pct": 0.38276683936749484
+    },
+    {
+      "key": "chunks_stream",
+      "label": "Стриминг чанков",
+      "mean_ms": 0.40933999698609114,
+      "max_ms": 11.655999987851828,
+      "share_pct": 0.3349046229561455
+    },
+    {
+      "key": "map_light",
+      "label": "Карта: light map",
+      "mean_ms": 0.31619749643141404,
+      "max_ms": 0.5050000036135316,
+      "share_pct": 0.2586993797374706
+    },
+    {
+      "key": "deferred_ms",
+      "label": "deferred_ms",
+      "mean_ms": 0.25326750037493184,
+      "max_ms": 5.853899987414479,
+      "share_pct": 0.20721272620470085
+    },
+    {
+      "key": "ow_deferred",
+      "label": "ow_deferred",
+      "mean_ms": 0.248607497633202,
+      "max_ms": 5.84940001135692,
+      "share_pct": 0.2034001096202368
+    },
+    {
+      "key": "status",
+      "label": "HUD строка",
+      "mean_ms": 0.08287000164273195,
+      "max_ms": 0.17850002041086555,
+      "share_pct": 0.06780072032755043
+    },
+    {
+      "key": "fov_ambient",
+      "label": "FOV: ambient",
+      "mean_ms": 0.026579487334507015,
+      "max_ms": 0.09210000280290842,
+      "share_pct": 0.021746209140743166
+    },
+    {
+      "key": "map_shadow",
+      "label": "Карта: тени",
+      "mean_ms": 0.018135000573238358,
+      "max_ms": 0.12669997522607446,
+      "share_pct": 0.014837288254282769
+    },
+    {
+      "key": "windows",
+      "label": "Окна UI",
+      "mean_ms": 0.0008299997716676444,
+      "max_ms": 0.002300017513334751,
+      "share_pct": 0.0006790706078826799
+    }
+  ],
+  "counters_mean": {
+    "get_column": 1809.075,
+    "get_column_hit": 2,
+    "draw_queue": 2218.1,
+    "stamp": 2218.1,
+    "chunks_new": 1.3
+  }
+}

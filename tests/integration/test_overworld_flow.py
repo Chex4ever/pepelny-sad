@@ -33,8 +33,7 @@ def test_examine_elion_from_sheet(game, screen_buffer):
 
 @pytest.mark.integration
 def test_dialogue_trigger_at_npc(game):
-    game.overworld.player.x = 20
-    game.overworld.player.y = 24
+    game.overworld.player.set_tile(20, 24)
     game.overworld._open_dialogue("elder_intro")
     assert game.overworld.dialogue_open
     assert game.overworld.dialogue.active
@@ -43,6 +42,7 @@ def test_dialogue_trigger_at_npc(game):
 
 @pytest.mark.integration
 def test_fov_computed_after_update(game):
-    game.overworld.update()
+    game.overworld.prepare_draw()
+    game.overworld.update_deferred()
     assert len(game.overworld.visible) > 0
-    assert (game.overworld.player.x, game.overworld.player.y) in game.overworld.visible
+    assert game.overworld.player.tile_pos() in game.overworld.visible

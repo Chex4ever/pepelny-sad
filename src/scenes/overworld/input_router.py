@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import pygame
 
-from src.audio.tile_sounds import resolve_footstep
 from src.constants import MAP_ORIGIN_Y
 from src.render.viewport import map_pan_cell_h, map_pan_cell_w
 from src.world.companions import companion_pos_for_player
@@ -35,12 +34,13 @@ class OverworldInputRouter:
         if state == UNEXPLORED:
             ow.status.set_tooltip(t("ui.status.unknown_land"))
             return
-        if (wx, wy) == (ow.player.x, ow.player.y):
+        ptx, pty = ow.player.tile_pos()
+        if (wx, wy) == (ptx, pty):
             name, _ = resolve_player()
             ow.status.set_tooltip(f"{name} (Tab)", can_examine=True)
             return
         for cid in ow.game.world_state.companions:
-            cx, cy = companion_pos_for_player(ow.player.x, ow.player.y)
+            cx, cy = companion_pos_for_player(ptx, pty)
             if (wx, wy) == (cx, cy):
                 name, _ = resolve_companion(cid)
                 ow.status.set_tooltip(name, can_examine=True)
@@ -65,6 +65,8 @@ class OverworldInputRouter:
         ow = self.scene
         total_dx = inp.mouse_pos[0] - self._drag_start[0]
         total_dy = inp.mouse_pos[1] - self._drag_start[1]
+        from src.render.render_mode import is_iso
+
         ow.camera.pan_from_drag(
             total_dx,
             total_dy,
@@ -72,6 +74,7 @@ class OverworldInputRouter:
             map_pan_cell_h(),
             self._pan_base[0],
             self._pan_base[1],
+            iso=is_iso(),
         )
 
     def _pointer_over_window(self, inp) -> bool:
@@ -111,7 +114,8 @@ class OverworldInputRouter:
         if inp.mouse_middle_released():
             self._mmb_panning = False
 
-    def handle_input(self, inp) -> bool:
+    def handle_input(self, inp, dt_ms: int = 16) -> bool:
+        _ = dt_ms
         ow = self.scene
         windows = ow.game.windows
 
@@ -154,7 +158,8 @@ class OverworldInputRouter:
         windows.handle_input(inp)
 
         if inp.pressed(pygame.K_o):
-            ow.interaction.try_examine_world(ow.player.x, ow.player.y)
+            ptx, pty = ow.player.tile_pos()
+            ow.interaction.try_examine_world(ptx, pty)
             return False
 
         if inp.pressed_tab():
@@ -182,34 +187,6 @@ class OverworldInputRouter:
                     log.show()
                 ow.log.add(t("ui.log.loaded"))
             return False
-
-        d = inp.dir_key()
-        if d:
-            nx, ny = ow.player.x + d[0], ow.player.y + d[1]
-            layer = ow.game.world_state.layer
-            if ow.game.world_map.is_walkable(nx, ny, layer, ow.game.profile.body_height_m):
-                ch, _, _ = ow.game.world_map.get_tile(nx, ny, layer)
-                if ch == ">":
-                    ow.game.audio.play_sfx("stairs")
-                    ow.game.request_scene("dungeon_enter")
-                    return True
-                if ch == "<":
-                    ow.game.audio.play_sfx("stairs")
-                    ow.game.request_scene("surface_exit")
-                    return True
-                ow.player.move(d[0], d[1])
-                if getattr(ow.game, "tutorial", None):
-                    ow.game.tutorial.notify_moved()
-                surface = resolve_footstep(nx, ny, layer, ow.game.world_map)
-                ow.game.audio.play_footstep(surface)
-                ow.game.world_state.turn_count += 1
-                active, _ = ow.weather.on_turn(ow.fov.in_shelter())
-                if active and layer == "surface":
-                    ow.log.add("Пепельный ветер...")
-                bid = ow.interaction.battle_for_tile(ch, nx, ny)
-                if bid:
-                    ow.pending_battle = bid
-                    ow.game.world_state.defeated_battles.add((nx, ny, layer))
 
         if inp.pressed_e():
             ow.interaction.interact()
