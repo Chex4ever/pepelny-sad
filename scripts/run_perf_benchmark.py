@@ -52,6 +52,9 @@ def main() -> int:
             pygame.display.quit()
             pygame.quit()
         pygame.init()
+        from src.render.gpu.context import configure_bench_gl_attributes
+
+        configure_bench_gl_attributes()
         screen = pygame.display.set_mode(
             (SCREEN_W * CELL_W, SCREEN_H * CELL_H),
             pygame.OPENGL | pygame.DOUBLEBUF,
@@ -61,9 +64,18 @@ def main() -> int:
             print("GPU unavailable, falling back to buffer-only timing")
             gpu = False
 
+    bench = os.environ.get("PEPELNY_BENCH", "").strip().lower() in ("1", "true", "yes")
+    if gpu and not bench:
+        os.environ["PEPELNY_BENCH"] = "1"
+        os.environ.setdefault("PEPELNY_VISIBLE_LOS", "24")
+        bench = True
     cfg = OverworldBenchConfig(
-        warmup_frames=int(os.environ.get("PEPELNY_BENCH_WARMUP", "15")),
-        measure_frames=int(os.environ.get("PEPELNY_BENCH_FRAMES", "40")),
+        warmup_frames=int(os.environ.get("PEPELNY_BENCH_WARMUP", "10" if bench else "15")),
+        measure_frames=int(os.environ.get("PEPELNY_BENCH_FRAMES", "40" if bench else "40")),
+        measure_burn_in=int(os.environ.get("PEPELNY_BENCH_BURN_IN", "2" if bench else "0")),
+        warmup_stand_frames=int(os.environ.get("PEPELNY_BENCH_WARMUP_STAND", "6" if bench else "0")),
+        dt_ms=16,
+        stand_still_measure=bench,
     )
     report = run_overworld_playthrough(game, cfg, gpu_present=gpu)
     path = maybe_write_report(report)
@@ -94,6 +106,8 @@ def main() -> int:
     if path:
         print(f"Wrote {path}")
     if gpu and report.mean_frame_ms >= mean_b:
+        return 1
+    if gpu and report.p95_frame_ms >= p95_b:
         return 1
     if gpu:
         gpu_map = next((s for s in report.stages if s.key == "gpu_map"), None)

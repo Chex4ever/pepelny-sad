@@ -53,7 +53,12 @@ class GpuPresenter:
         queue = ow.map_renderer.last_iso_draw_queue
 
         with perf.measure("gpu_map"):
-            self._iso.draw(queue, focus_wx=focus_wx, focus_wy=focus_wy)
+            self._iso.draw(
+                queue,
+                focus_wx=focus_wx,
+                focus_wy=focus_wy,
+                queue_cache_key=ow.map_renderer._queue_cache_key,
+            )
         perf.set_counter("gpu_batch", self._iso.last_batch_quads)
         perf.set_counter("atlas_size", self._iso.atlas.texture_size)
 
@@ -62,8 +67,9 @@ class GpuPresenter:
         perf.set_counter("ui_quads", self._ui.last_quad_count)
         perf._timers["gpu_ui_ms"] = self._ui.last_upload_ms
 
-        pygame.display.flip()
-        self.display_ms = (_time.perf_counter() - t0) * 1000.0
+        with perf.measure("gpu_swap"):
+            pygame.display.flip()
+        self.display_ms = perf.timer_ms("gpu_swap")
         perf._timers["display_ms"] = self.display_ms
 
     def release(self) -> None:

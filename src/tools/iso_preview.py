@@ -18,7 +18,13 @@ from src.constants import (
     SCREEN_H,
     SCREEN_W,
 )
-from src.render.iso_footprint import internal_footprint_holes, union_footprint
+from src.render.iso_footprint import (
+    footprint_bbox_ear_cells,
+    internal_footprint_holes,
+    iso_footprint_geom_pixel_rect,
+    pixel_inside_iso_diamond,
+    union_footprint,
+)
 from src.render.iso_projector import IsoProjector
 from src.render.screen_buffer import ScreenBuffer
 from src.render.tile_stencil import load_sprite, load_tile_stencil, stamp
@@ -222,6 +228,242 @@ def build_object_preview_queue(
         z = ENTITY_DRAW_Z_M if "trunk" in object_id else 0.0
         append_stencil_object_to_queue(queue, object_id, wx, wy, z_m=z)
     return queue
+
+
+def drawn_floor_footprint_cells(
+    queue: list[tuple],
+    *,
+    focus_wx: int,
+    focus_wy: int,
+    buf_w: int = SCREEN_W,
+    buf_h: int = SCREEN_H,
+    projector: IsoProjector | None = None,
+) -> set[tuple[int, int]]:
+    """Char cells whose center lies inside the GPU iso diamond union (paintable)."""
+    p = projector or IsoProjector(origin_x=ISO_ORIGIN_X, origin_y=ISO_ORIGIN_Y)
+    bounds = floor_tile_geom_bounds(
+        queue,
+        focus_wx=focus_wx,
+        focus_wy=focus_wy,
+        buf_w=buf_w,
+        buf_h=buf_h,
+        projector=p,
+    )
+    anchors: list[tuple[int, int]] = []
+    for _, wx, wy, z_m, sid, *_ in queue:
+        if z_m != 0.0 or sid.startswith("sprite:"):
+            continue
+        ax, ay = p.world_to_screen(wx, wy, z_m, focus_wx=focus_wx, focus_wy=focus_wy)
+        if ax < -12 or ay < -16 or ax > buf_w + 12 or ay > buf_h + 16:
+            continue
+        anchors.append((ax, ay))
+    covered = union_footprint(anchors)
+    paintable: set[tuple[int, int]] = set()
+    for cx, cy in covered:
+        if not (0 <= cx < buf_w and 0 <= cy < buf_h):
+            continue
+        px = cx * CELL_W + CELL_W / 2
+        py = cy * CELL_H + CELL_H / 2
+        if pixel_inside_any_footprint(px, py, bounds):
+            paintable.add((cx, cy))
+    return paintable
+
+
+def gpu_surface_bg_gaps(
+    surf: pygame.Surface,
+    covered: set[tuple[int, int]],
+    *,
+    bg: tuple[int, int, int] = COLOR_BG,
+    tolerance: int = 2,
+) -> list[tuple[int, int]]:
+    """Screen cells in covered union that still show background RGB (GPU hole detector)."""
+    gaps: list[tuple[int, int]] = []
+    for cx, cy in covered:
+        painted = False
+        for ox, oy in (
+            (CELL_W // 2, CELL_H // 2),
+            (1, 1),
+            (CELL_W - 2, 1),
+            (1, CELL_H - 2),
+            (CELL_W - 2, CELL_H - 2),
+        ):
+            px = cx * CELL_W + ox
+            py = cy * CELL_H + oy
+            if px >= surf.get_width() or py >= surf.get_height():
+                continue
+            r, g, b, *_ = surf.get_at((px, py))
+            if not is_gpu_clear_pixel((r, g, b), bg=bg, tolerance=tolerance):
+                painted = True
+                break
+        if not painted:
+            gaps.append((cx, cy))
+    return gaps
+
+
+def drawn_floor_bbox_ear_cells(
+    queue: list[tuple],
+    *,
+    focus_wx: int,
+    focus_wy: int,
+    buf_w: int = SCREEN_W,
+    buf_h: int = SCREEN_H,
+    projector: IsoProjector | None = None,
+) -> set[tuple[int, int]]:
+    """AABB corner ears from floor tiles visible on screen (bbox minus iso diamond)."""
+    p = projector or IsoProjector(origin_x=ISO_ORIGIN_X, origin_y=ISO_ORIGIN_Y)
+    ears: set[tuple[int, int]] = set()
+    for _, wx, wy, z_m, sid, *_ in queue:
+        if z_m != 0.0 or sid.startswith("sprite:"):
+            continue
+        ax, ay = p.world_to_screen(wx, wy, z_m, focus_wx=focus_wx, focus_wy=focus_wy)
+        if ax < -12 or ay < -16 or ax > buf_w + 12 or ay > buf_h + 16:
+            continue
+        for cx, cy in footprint_bbox_ear_cells(ax, ay):
+            if 0 <= cx < buf_w and 0 <= cy < buf_h:
+                ears.add((cx, cy))
+    return ears
+
+
+def is_gpu_clear_pixel(
+    rgb: tuple[int, int, int],
+    *,
+    bg: tuple[int, int, int] = COLOR_BG,
+    tolerance: int = 2,
+) -> bool:
+    """Framebuffer clear color (symmetric — ignores dark glyph AA fringe)."""
+    r, g, b = rgb
+    return (
+        abs(r - bg[0]) <= tolerance
+        and abs(g - bg[1]) <= tolerance
+        and abs(b - bg[2]) <= tolerance
+    )
+
+
+def is_gpu_background_pixel(
+    rgb: tuple[int, int, int],
+    *,
+    bg: tuple[int, int, int] = COLOR_BG,
+    tolerance: int = 2,
+) -> bool:
+    """Legacy loose bg check for char-cell gap scans."""
+    r, g, b = rgb
+    return (
+        r <= bg[0] + tolerance
+        and g <= bg[1] + tolerance
+        and b <= bg[2] + tolerance
+    )
+
+
+def floor_tile_geom_bounds(
+    queue: list[tuple],
+    *,
+    focus_wx: int,
+    focus_wy: int,
+    buf_w: int = SCREEN_W,
+    buf_h: int = SCREEN_H,
+    projector: IsoProjector | None = None,
+) -> list[tuple[float, float, float, float]]:
+    """GPU footprint AABB per visible floor tile (for pixel mask scans)."""
+    p = projector or IsoProjector(origin_x=ISO_ORIGIN_X, origin_y=ISO_ORIGIN_Y)
+    bounds: list[tuple[float, float, float, float]] = []
+    for _, wx, wy, z_m, sid, *_ in queue:
+        if z_m != 0.0 or sid.startswith("sprite:"):
+            continue
+        ax, ay = p.world_to_screen(wx, wy, z_m, focus_wx=focus_wx, focus_wy=focus_wy)
+        if ax < -12 or ay < -16 or ax > buf_w + 12 or ay > buf_h + 16:
+            continue
+        bounds.append(iso_footprint_geom_pixel_rect(ax, ay))
+    return bounds
+
+
+def pixel_inside_any_footprint(
+    px: float,
+    py: float,
+    tile_bounds: list[tuple[float, float, float, float]],
+) -> bool:
+    for x0, y0, x1, y1 in tile_bounds:
+        if px < x0 or py < y0 or px >= x1 or py >= y1:
+            continue
+        if pixel_inside_iso_diamond(px, py, x0, y0):
+            return True
+    return False
+
+
+def gpu_surface_footprint_pixel_artifacts(
+    surf: pygame.Surface,
+    tile_bounds: list[tuple[float, float, float, float]],
+    *,
+    bg: tuple[int, int, int] = COLOR_BG,
+    tolerance: int = 2,
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    """Union footprint mask: ears outside all diamonds; holes inside union showing clear color."""
+    sw, sh = surf.get_width(), surf.get_height()
+    if not tile_bounds:
+        return [], []
+    px_lo = max(0, min(int(b[0]) for b in tile_bounds))
+    py_lo = max(0, min(int(b[1]) for b in tile_bounds))
+    px_hi = min(sw, max(int(b[2]) for b in tile_bounds))
+    py_hi = min(sh, max(int(b[3]) for b in tile_bounds))
+    ears: list[tuple[int, int]] = []
+    holes: list[tuple[int, int]] = []
+    for py in range(py_lo, py_hi):
+        for px in range(px_lo, px_hi):
+            inside = pixel_inside_any_footprint(px + 0.5, py + 0.5, tile_bounds)
+            r, g, b, *_ = surf.get_at((px, py))
+            is_clear = is_gpu_clear_pixel((r, g, b), bg=bg, tolerance=tolerance)
+            if inside and is_clear:
+                holes.append((px, py))
+            elif not inside and not is_clear:
+                ears.append((px, py))
+    return ears, holes
+
+
+def build_footprint_mask_surface(
+    tile_bounds: list[tuple[float, float, float, float]],
+    *,
+    width: int,
+    height: int,
+) -> pygame.Surface:
+    """Debug mask: black outside footprint diamonds, white inside (pixel-exact)."""
+    mask = pygame.Surface((width, height))
+    mask.fill((0, 0, 0))
+    for x0, y0, x1, y1 in tile_bounds:
+        px_lo = max(0, int(x0))
+        py_lo = max(0, int(y0))
+        px_hi = min(width, int(x1))
+        py_hi = min(height, int(y1))
+        for py in range(py_lo, py_hi):
+            for px in range(px_lo, px_hi):
+                if pixel_inside_iso_diamond(px + 0.5, py + 0.5, x0, y0):
+                    mask.set_at((px, py), (255, 255, 255))
+    return mask
+
+
+def gpu_surface_bbox_ear_leaks(
+    surf: pygame.Surface,
+    ears: set[tuple[int, int]],
+    *,
+    covered: set[tuple[int, int]] | None = None,
+    bg: tuple[int, int, int] = COLOR_BG,
+    tolerance: int = 2,
+) -> list[tuple[int, int]]:
+    """Ear cells outside the footprint union that show bbox corner bleed (not neighbor tiles)."""
+    leaks: list[tuple[int, int]] = []
+    for cx, cy in ears:
+        if covered is not None and (cx, cy) in covered:
+            continue
+        px = cx * CELL_W + CELL_W // 2
+        py = cy * CELL_H + CELL_H // 2
+        if px >= surf.get_width() or py >= surf.get_height():
+            continue
+        r, g, b, *_ = surf.get_at((px, py))
+        if not (
+            r <= bg[0] + tolerance
+            and g <= bg[1] + tolerance
+            and b <= bg[2] + tolerance
+        ):
+            leaks.append((cx, cy))
+    return leaks
 
 
 def analyze_queue_footprint(

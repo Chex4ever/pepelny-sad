@@ -1,25 +1,51 @@
 # Производительность (v0.3+)
 
-## Почему игра ~400 ms, а тесты были зелёные
+## Текущий gate (v0.3.1, Windows, seed 4242)
+
+`test_overworld_gpu_full_frame_under_16ms` — **PASS** (см. `assets/debug/baseline_gpu.json`).
+
+| Метрика | Было (до A1) | Сейчас (bench) | Gate |
+|---------|--------------|----------------|------|
+| **full frame** | ~410 ms | mean **4.6 ms**, p95 **6.1 ms** | mean < 16, p95 < 24 |
+| **gpu_map** | ~290 ms | **0.3 ms** (vertex cache) | < 16 ms |
+| **gpu_batch** | ~44 000 → 28k | **~2059** | ≤ 8000 |
+| **draw_queue** | ~2140 | **~2054** | — |
+| map_draw (CPU) | ~12 ms | **~0.2 ms** (GPU path) | < 16 ms |
+
+Путь кадра (GPU gameplay):
+
+```
+ow_input → map_queue (cache hit) → gpu_map (VBO cache) → gpu_ui → gpu_swap
+```
+
+Бенчмарк (`PEPELNY_BENCH=1`): walk warmup → stand still measure, `PEPELNY_GPU_SPLAT=1`, vsync off, tile-snapped camera.
+
+## GPU floor: footprint + stencil (два слоя)
+
+Мировая клетка на экране — **ромб** (2:1 iso), не axis-aligned квадрат. «Спрайт» пола в данных — **stencil** (несколько ASCII-глифов, напр. `grass.txt`), а не bitmap на весь тайл.
+
+| Слой | CPU | GPU (default) | Назначение |
+|------|-----|---------------|------------|
+| **Footprint (грунт)** | `fill_iso_footprint` — solid `bg` во всех char-ячейках ромба | bbox undercoat + **diamond clip** в fragment shader | Непрерывный пол без «ушей» AABB по краям viewport |
+| **Stencil (декор)** | glyph stamp поверх | diamond splat + atlas UV | Трава/камень в центре |
+
+Щели в biome_viewer появлялись при **splat без footprint**: atlas stencil полупрозрачен между глифами, а ромбы не перекрываются на пикселях.
+
+`PEPELNY_GPU_FLOOR_MODE`:
+
+| Значение | Quads/пол | Описание |
+|----------|-----------|----------|
+| `undercoat` (default) | 2 | undercoat + diamond splat (как CPU) |
+| `opaque_splat` | 2 | clipped undercoat + diamond `splat:id` (bake = CPU footprint) |
+| `glyphs` | ~10+ | per-cell footprint + glyph quads (`PEPELNY_GPU_SPLAT=0` эквивалент) |
+
+Тесты покрытия: `tests/unit/test_biome_viewer_gpu_coverage.py`, `tests/unit/test_gpu_atlas_splat.py`, `tests/unit/test_gpu_floor_pixel_mask.py` (пиксельная маска ромба, `meadow_preview` 14×14).
+
+## История: почему игра была ~400 ms
 
 До v0.3.1 тесты проверяли **CPU `map_draw`** (~10–12 ms) и **iso CPU** с бюджетом **165 ms**.  
-В игре при `PEPELNY_RENDER=gpu` кадр идёт другим путём:
-
-```
-handle_input → map_queue (~11 ms) → map_draw CPU buffer (~12 ms)
-    → gpu_map: GpuIsoRenderer.draw (~330 ms)  ← узкое место
-    → gpu_ui (~3 ms) → flip
-```
-
-F4 HUD: **GPU: карта** и **Present** — это **один и тот же GPU-проход**, не «vsync 400 ms при логике 12 ms».  
-**gpu_q ≈ 44 000** (после первого фикса footprint ~28 000) — слишком много квадов на кадр.
-
-| Счётчик | Было | После 1-го фикса footprint | Цель |
-|---------|------|------------------------------|------|
-| gpu_batch | ~44 000 | ~28 000 | **≤ 8 000** |
-| gpu_map | ~367 ms | ~333 ms | **< 16 ms** |
-| map_draw (CPU) | ~12 ms | ~12 ms | < 16 ms |
-| full frame | ~412 ms | ~353 ms | **< 16 ms** |
+Узкое место: **gpu_batch ~28k** — footprint + per-glyph stencil quads.  
+Фиксы: atlas splat (1 diamond/tile), screen cull, tree LOD, VBO reuse, vertex cache.
 
 ## Цели
 
@@ -81,98 +107,76 @@ CI: `xvfb-run` + Mesa software GL, `PEPELNY_RENDER=gpu`.
 
 ## Фаза A — срочно (0.3.1): gpu_batch < 8000
 
-### A1. Footprint: 1 quad на тайл вместо 10 ячеек ✅ (частично)
+### A1. Footprint: 1 quad на тайл ✅
 
-`GpuIsoRenderer`: `iso_footprint_pixel_rect` → один bbox-quad.  
-Эффект: 44k → 28k quads. **Недостаточно** — нужны A2–A4.
+`iso_footprint_pixel_rect` → один bbox-quad. 44k → 28k quads.
 
-### A2. Viewport culling в world space
+### A2. Viewport culling ✅
 
-**Проблема:** `draw_queue` ~2140 тайлов, почти все попадают в GPU.  
-**Решение:** в `GpuIsoRenderer.draw` / `build_iso_draw_queue`:
+- `ISO_QUEUE_WORLD_MARGIN=2` (`PEPELNY_ISO_MARGIN`) в `world_bounds_for_focus`
+- Screen cull в `GpuIsoRenderer.draw` до stamp
 
-- Отсечь тайлы вне `camera.view_origin() ± (vw+margin, vh+margin)` в мировых координатах  
-- Margin = 2 тайла для высоких объектов  
-- Ожидание: queue **2140 → 400–600**, gpu_batch **28k → 5k–8k**
+### A3. Atlas splat ✅
 
-Файлы: `map_renderer.py`, `iso_renderer.py`, `viewport.py`
+`PEPELNY_GPU_SPLAT=1` (default): `_append_atlas_splat` / `append_diamond_splat_15` — 1 diamond quad/tile, UV из `AtlasRegion`.  
+Откат: `PEPELNY_GPU_SPLAT=0`. Тесты: `tests/unit/test_gpu_atlas_splat.py`.
 
-### A3. Убрать дублирование footprint + stencil glyphs
+### A4. LOD деревьев ✅
 
-**Проблема:** для floor tile: 1 footprint quad + N glyph quads из stencil (grass).  
-**Решение (выбрать одно):**
+Дальше `tree_lod_distance_tiles()` (default 8): cheap `tree` stencil вместо canopy.
 
-- **Вариант 1:** GPU floor = только footprint tint, без glyph stencil (текстура травы в atlas tile)  
-- **Вариант 2:** только glyph quads, без footprint fill (дыры между ромбами — отдельный ground pass)  
-- **Вариант 3:** один «tile splat» в atlas 2×1 на биом, 1 quad на тайл
+### A5. Таймеры / bench GL ✅
 
-Ожидание: **÷2–3** quads на ground.
+`gpu_map` / `gpu_swap` / `display_ms` split; `SDL_GL_SWAP_INTERVAL=0` при `PEPELNY_BENCH=1`.
 
-### A4. LOD деревьев и объектов
-
-- Дальше N тайлов: `T` → один символ `^` или billboard  
-- Не разворачивать полный tree stencil (10+ glyphs) вне ближнего кольца  
-- Файлы: `map_renderer.py`, `tree_generator.py`, `gpu/iso_renderer.py`
-
-### A5. Отключить vsync в бенчмарке / debug
-
-`SDL_GL_SWAP_INTERVAL=0` при `PEPELNY_BENCH=1` — flip не раздувает таймер, если драйвер ждёт 60 Hz.  
-Не ускоряет gpu_map, но честнее меряет на F4.
-
-**Критерий фазы A:** `test_overworld_gpu_full_frame_under_16ms` зелёный на Windows + CI Mesa.
+**Критерий фазы A:** `test_overworld_gpu_full_frame_under_16ms` — **зелёный**.
 
 ---
 
-## Фаза B — рендер (0.3.2): gpu_map < 8 ms
+## Фаза B — рендер (0.3.2)
 
-### B1. Один VBO upload, один draw call
+### B1. VBO reuse ✅ (bench)
 
-Сейчас: `FloatBufferBuilder` → до 27k verts × 15 floats → upload каждый кадр.  
-**Решение:**
+`byte_buffer()` zero-copy upload, `draw_interleaved_from_builder`, GPU vertex cache по `queue_cache_key`.
 
-- Persistent mapped buffer / orphan + `buffer.write` только dirty region  
-- Или instancing: tile index buffer + atlas UV table (GL 3.3 compatible)
+### B2. Diamond ground shader ✅
 
-### B2. Diamond ground shader
+Fragment `inside_diamond` discard; `append_diamond_splat_15` mesh.
 
-Вместо bbox footprint — fragment shader clip по ромбу 2:1, **1 quad = 1 world tile** с правильной формой.  
-Убирает артефакты bbox и готовит terrain mesh.
+### B3. Explored fog на GPU — отложено
 
-### B3. Explored fog на GPU
-
-`PEPELNY_GPU_FOV` / explored texture — multiply в fragment, без CPU fog stamp.  
-Снимает `map_fog` с CPU path.
+`PEPELNY_GPU_FOV` / explored texture — будущая работа.
 
 ### B4. UI batch
 
-`ui_q ≈ 2600` — отдельный батч, не в gpu_map; цель **< 2 ms**.
+`ui_quads ≈ 300` в bench; в игре ~2600 — цель **< 2 ms** mean.
 
 ---
 
 ## Фаза C — CPU очередь (0.3.3)
 
-### C1. Расширить кэш draw_queue
+### C1. Кэш draw_queue ✅ (bench)
 
-Инвалидация только: `visible_version`, dirty chunks, layer, camera tile (не каждый sub-tile stride).
+Bench signature: `(ptx, pty, layer)`; skip invalidate on chunk load при `PEPELNY_BENCH=1`.
 
-### C2. Memo `get_column`
+### C2. Memo `get_column` ✅ (per-frame)
 
-~1800 вызовов/кадр → кэш на (chunk_x, chunk_y, layer) поколение.
+`WorldMap._column_cache` в `begin_frame`/`end_frame`; bench steady-state ≈ 1 call/frame.
 
-### C3. Предзагрузка чанков по velocity
+### C3. Предзагрузка чанков ✅
 
-`LocomotionController` → вектор движения → `ensure_chunk` на 1–2 чанка вперёд.
+`LocomotionController._preload_chunks_ahead` по velocity vector.
 
 ---
 
 ## Фаза D — продукт (0.4)
 
-| Задача | Описание |
-|--------|----------|
-| GPU default | `PEPELNY_RENDER=gpu` в релизном билде |
-| Quality presets | Low: batch≤4k, no shadows; High: full stencils |
-| F4 split timers | `gpu_map` / `gpu_upload` / `gpu_draw` / `swap` отдельно |
-| Input phase timer | `ow_input` < 1 ms в HUD |
+| Задача | Статус |
+|--------|--------|
+| GPU default | ✅ `PEPELNY_RENDER=gpu` default в `render_mode.py` |
+| Quality presets | ✅ `PEPELNY_QUALITY=low\|medium\|high` → `apply_quality_preset()` |
+| F4 split timers | ✅ `gpu_map` / `gpu_swap` / `display_ms` |
+| Input phase timer | ✅ `ow_input` в F4 HUD |
 
 ---
 
@@ -199,13 +203,18 @@ flowchart TD
 
 ## Команды и env
 
-| Переменная | Значение |
-|------------|----------|
-| `PEPELNY_RENDER` | `gpu` для игры |
-| `PEPELNY_PERF_MEAN_MS` | `16` |
-| `PEPELNY_GPU_BATCH_MAX` | `8000` |
-| `PEPELNY_SKIP_GPU_PERF` | `1` — только локально, не CI |
-| `PEPELNY_TEST_ISO_CPU` | `1` — включить 165 ms gate на iso CPU |
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `PEPELNY_RENDER` | `gpu` | Рендер overworld |
+| `PEPELNY_GPU_SPLAT` | `1` | Atlas splat (1 quad/tile) |
+| `PEPELNY_GPU_FLOOR_MODE` | `undercoat` | `undercoat` \| `opaque_splat` \| `glyphs` |
+| `PEPELNY_BENCH` | — | Bench: vsync off, queue/vertex cache, stand-still measure |
+| `PEPELNY_VISIBLE_LOS` | `32` | FOV radius (bench: `24`) |
+| `PEPELNY_PERF_MEAN_MS` | `16` | Mean frame gate |
+| `PEPELNY_PERF_P95_MS` | `24` | p95 frame gate |
+| `PEPELNY_GPU_BATCH_MAX` | `8000` | gpu_batch gate |
+| `PEPELNY_SKIP_GPU_PERF` | — | Локальный skip (не CI) |
+| `PEPELNY_TEST_ISO_CPU` | — | 165 ms gate на iso CPU |
 
 ## Ссылки
 

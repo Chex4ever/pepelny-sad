@@ -33,6 +33,9 @@ def bench_game_gpu(monkeypatch):
     from src.render.renderer import AsciiRenderer
 
     monkeypatch.setenv("PEPELNY_RENDER", "gpu")
+    monkeypatch.setenv("PEPELNY_BENCH", "1")
+    monkeypatch.setenv("PEPELNY_GPU_SPLAT", "1")
+    monkeypatch.setenv("PEPELNY_VISIBLE_LOS", "24")
     monkeypatch.delenv("SDL_VIDEODRIVER", raising=False)
     monkeypatch.delenv("SDL_AUDIODRIVER", raising=False)
     if pygame.get_init():
@@ -40,6 +43,9 @@ def bench_game_gpu(monkeypatch):
         pygame.quit()
     init_render_mode_from_env()
     pygame.init()
+    from src.render.gpu.context import configure_bench_gl_attributes
+
+    configure_bench_gl_attributes()
     pixel_w, pixel_h = SCREEN_W * CELL_W, SCREEN_H * CELL_H
     screen = pygame.display.set_mode((pixel_w, pixel_h), pygame.OPENGL | pygame.DOUBLEBUF)
     from tests.performance.conftest import BenchGame
@@ -65,7 +71,14 @@ def _stage(report, key: str):
 @pytest.mark.slow
 def test_overworld_gpu_full_frame_under_16ms(bench_game_gpu):
     """Full overworld frame with GPU present — same path as in-game PEPELNY_RENDER=gpu."""
-    cfg = OverworldBenchConfig(warmup_frames=8, measure_frames=24)
+    cfg = OverworldBenchConfig(
+        warmup_frames=10,
+        measure_frames=40,
+        measure_burn_in=2,
+        warmup_stand_frames=6,
+        dt_ms=16,
+        stand_still_measure=True,
+    )
     report = run_overworld_playthrough(bench_game_gpu, cfg, gpu_present=True)
 
     mean_b, p95_b = default_frame_budget_ms()

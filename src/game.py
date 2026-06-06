@@ -53,6 +53,9 @@ class Game:
         pixel_w, pixel_h = SCREEN_W * CELL_W, SCREEN_H * CELL_H
         mode_flags = 0
         if render_mode() == "gpu":
+            from src.render.gpu.context import configure_bench_gl_attributes
+
+            configure_bench_gl_attributes()
             mode_flags = pygame.OPENGL | pygame.DOUBLEBUF
         self.screen = pygame.display.set_mode((pixel_w, pixel_h), mode_flags)
         if hasattr(pygame.key, "stop_text_input"):

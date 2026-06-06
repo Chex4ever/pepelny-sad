@@ -1,0 +1,85 @@
+{
+  "items": {
+    "ash_blade": {
+      "slot": "hand_r",
+      "anchor": "hand_r_grip",
+      "voxel_template": "sword_curved_v1",
+      "kind": "weapon",
+      "palette": "metal_steel"
+    },
+    "root_staff": {
+      "slot": "hand_r",
+      "anchor": "hand_r_grip",
+      "voxel_template": "staff_twisted_v1",
+      "kind": "weapon",
+      "palette": "armor_root"
+    },
+    "pepel_lantern": {
+      "slot": "hand_l",
+      "anchor": "hand_l_grip",
+      "voxel_template": "lantern_v1",
+      "kind": "lantern",
+      "palette": "lantern_glow"
+    },
+    "ash_tunic": {
+      "slot": "chest",
+      "anchor": "chest_front",
+      "voxel_template": "tunic_plate_v1",
+      "kind": "armor_chest",
+      "palette": "armor_ash"
+    },
+    "root_greaves": {
+      "slot": "legs",
+      "anchor": "leg_l",
+      "anchor_secondary": "leg_r",
+      "voxel_template": "greaves_root_v1",
+      "kind": "armor_legs",
+      "palette": "armor_root"
+    },
+    "star_amulet": {
+      "slot": "amulet",
+      "anchor": "neck_front",
+      "voxel_template": "amulet_star_v1",
+      "kind": "amulet",
+      "palette": "amulet_star"
+    },
+    "helm_ash": {
+      "slot": "head",
+      "anchor": "head_top",
+      "voxel_template": "helmet_bowl_v1",
+      "occlusion_mask": ["hair", "scalp"],
+      "kind": "armor_head",
+      "palette": "armor_ash"
+    }
+  },
+  "voxel_templates": {
+    "sword_curved_v1": [
+      [0, 0, 0, "weapon"], [0, 0, 1, "weapon"], [0, 0, 2, "weapon"],
+      [0, 1, 2, "weapon"], [0, 1, 3, "weapon"]
+    ],
+    "staff_twisted_v1": [
+      [0, 0, 0, "weapon"], [0, 0, 1, "weapon"], [0, 0, 2, "weapon"],
+      [0, 0, 3, "weapon"], [0, 0, 4, "weapon"], [1, 0, 4, "weapon"]
+    ],
+    "lantern_v1": [
+      [0, 0, 0, "lantern"], [0, 0, 1, "lantern"], [0, 1, 1, "lantern"],
+      [-1, 0, 1, "lantern"], [1, 0, 1, "lantern"]
+    ],
+    "tunic_plate_v1": [
+      [0, 0, 0, "armor_chest"], [-1, 0, 0, "armor_chest"], [1, 0, 0, "armor_chest"],
+      [0, 0, 1, "armor_chest"], [0, 0, 2, "armor_chest"], [-1, 0, 1, "armor_chest"], [1, 0, 1, "armor_chest"]
+    ],
+    "greaves_root_v1": [
+      [0, 0, 0, "armor_legs"], [0, 0, 1, "armor_legs"], [0, 0, 2, "armor_legs"],
+      [-1, 0, 1, "armor_legs"], [1, 0, 1, "armor_legs"]
+    ],
+    "amulet_star_v1": [
+      [0, 0, 0, "amulet"], [0, 1, 0, "amulet"], [-1, 0, 0, "amulet"], [1, 0, 0, "amulet"]
+    ],
+    "helmet_bowl_v1": [
+      [0, 0, 0, "armor_head"], [-1, 0, 0, "armor_head"], [1, 0, 0, "armor_head"],
+      [0, 0, 1, "armor_head"], [-1, 0, 1, "armor_head"], [1, 0, 1, "armor_head"],
+      [0, 1, 1, "armor_head"]
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "birch_grove": {
+    "display_name": "Берёзовая роща",
+    "species_weights": {"birch": 0.8, "aspen": 0.15, "rowan": 0.05},
+    "age_years": {"min": 8, "max": 45, "mean": 22},
+    "density": 0.35,
+    "cluster_radius": 4,
+    "dead_ratio": 0.03,
+    "stump_ratio": 0.02,
+    "health_bias": 1.0
+  },
+  "young_mixed": {
+    "display_name": "Молодой смешанный лес",
+    "species_weights": {"oak": 0.25, "birch": 0.25, "aspen": 0.25, "maple": 0.25},
+    "age_years": {"min": 5, "max": 25, "mean": 12},
+    "density": 0.18,
+    "cluster_radius": 6,
+    "dead_ratio": 0.02,
+    "stump_ratio": 0.01,
+    "health_bias": 1.0
+  },
+  "old_dense_mixed": {
+    "display_name": "Старый густой смешанный лес",
+    "species_weights": {
+      "oak": 0.2, "birch": 0.1, "maple": 0.15, "pine": 0.2, "spruce": 0.2, "cedar": 0.15
+    },
+    "age_years": {"min": 80, "max": 200, "mean": 130},
+    "density": 0.45,
+    "cluster_radius": 8,
+    "dead_ratio": 0.15,
+    "stump_ratio": 0.08,
+    "health_bias": 0.85
+  },
+  "burned_clearing": {
+    "display_name": "Прокатое место",
+    "species_weights": {"oak": 0.2, "birch": 0.2, "pine": 0.2, "spruce": 0.2, "aspen": 0.2},
+    "age_years": {"min": 40, "max": 120, "mean": 70},
+    "density": 0.25,
+    "cluster_radius": 5,
+    "dead_ratio": 1.0,
+    "stump_ratio": 0.7,
+    "health_bias": 0.0
+  },
+  "spruce_taiga": {
+    "display_name": "Еловая тайга",
+    "species_weights": {"spruce": 0.5, "pine": 0.35, "cedar": 0.15},
+    "age_years": {"min": 30, "max": 180, "mean": 90},
+    "density": 0.4,
+    "cluster_radius": 7,
+    "dead_ratio": 0.08,
+    "stump_ratio": 0.04,
+    "health_bias": 0.95
+  },
+  "baobab_savanna": {
+    "display_name": "Баобабовая саванна",
+    "species_weights": {"baobab": 0.85, "oak": 0.15},
+    "age_years": {"min": 100, "max": 800, "mean": 350},
+    "density": 0.08,
+    "cluster_radius": 12,
+    "dead_ratio": 0.05,
+    "stump_ratio": 0.03,
+    "health_bias": 0.9
+  }
+}

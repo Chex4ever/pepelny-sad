@@ -1,11 +1,31 @@
-"""Batched textured quads for isometric draw queue."""
+"""Batched textured quads for isometric draw queue.
+
+GPU floor tiles mirror the CPU two-layer model (see docs/PERFORMANCE.md § GPU floor):
+
+1. **Footprint (грунт)** — solid biome ``bg`` over all char cells in the iso diamond.
+   CPU: ``fill_iso_footprint`` in ``stamp()``. GPU default: bbox undercoat + diamond clip.
+
+2. **Stencil (декор)** — ASCII glyph cluster (e.g. grass.txt); atlas region is glyph bbox only,
+   not a full tile bitmap. GPU: diamond splat or opaque ``splat:id`` bake.
+
+``PEPELNY_GPU_FLOOR_MODE``: ``undercoat`` (default) | ``opaque_splat`` | ``glyphs``.
+"""
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
-from src.constants import CELL_H, CELL_W, COLOR_BG, ISO_STEP_X, ISO_STEP_Y, SCREEN_H, SCREEN_W
+from src.constants import (
+    CELL_H,
+    CELL_W,
+    COLOR_BG,
+    ISO_STEP_X,
+    ISO_STEP_Y,
+    SCREEN_H,
+    SCREEN_W,
+)
 from src.render.gpu.atlas import AtlasRegion, TileAtlas, preload_stencil_ids
-from src.render.gpu.buffer_draw import draw_interleaved_triangles
+from src.render.gpu.buffer_draw import draw_interleaved_from_builder
 from src.render.gpu.vertex_buffer import FloatBufferBuilder
 from src.render.iso_footprint import iso_footprint_pixel_rect
 from src.render.iso_projector import IsoProjector
@@ -49,6 +69,12 @@ in vec4 v_color;
 in float v_fog;
 out vec4 f_color;
 uniform sampler2D u_atlas;
+uniform int u_texless;
+
+uniform float u_diamond_half_w;
+uniform float u_diamond_mid_h;
+uniform float u_fp_bbox_w;
+uniform float u_fp_bbox_h;
 
 vec2 atlas_uv(vec2 pos, vec4 bounds, vec4 uvbox) {
     vec2 size = bounds.zw - bounds.xy;
@@ -56,12 +82,48 @@ vec2 atlas_uv(vec2 pos, vec4 bounds, vec4 uvbox) {
     return vec2(mix(uvbox.x, uvbox.z, t.x), mix(uvbox.y, uvbox.w, t.y));
 }
 
+bool inside_iso_diamond(vec2 pos, vec4 bounds, float slack) {
+    float px = bounds.x + u_diamond_half_w;
+    float py = bounds.y + u_diamond_mid_h;
+    vec2 d = pos - vec2(px, py);
+    float ax = abs(d.x);
+    if (d.y >= 0.0) {
+        return ax / u_diamond_half_w + d.y / (2.0 * u_diamond_mid_h) <= slack;
+    }
+    return ax / u_diamond_half_w + (-d.y) / u_diamond_mid_h <= slack;
+}
+
+bool is_footprint_aabb(vec4 bounds) {
+    vec2 sz = bounds.zw - bounds.xy;
+    return abs(sz.x - u_fp_bbox_w) < 1.0 && abs(sz.y - u_fp_bbox_h) < 1.0;
+}
+
+float fog_strength(float fog) {
+    if (fog >= 2.0) fog -= 2.0;
+    return fog;
+}
+
 void main() {
+    if (is_footprint_aabb(v_bounds) && (v_fog >= 2.0 || v_uvbox.x < -0.5)) {
+        if (!inside_iso_diamond(v_pos, v_bounds, 1.001)) discard;
+    }
+    if (is_footprint_aabb(v_bounds) && u_texless == 0 && v_uvbox.x >= -0.5 && v_fog < 2.0
+        && !inside_iso_diamond(v_pos, v_bounds, 1.001)) {
+        discard;
+    }
+    float fog = fog_strength(v_fog);
     // Footprint fill uses solid biome tint (CPU stamps per cell); uvbox.x < 0 marks that path.
     if (v_uvbox.x < -0.5) {
         vec3 rgb = v_color.rgb;
-        if (v_fog > 0.5) rgb *= 0.45;
-        else if (v_fog > 0.1) rgb *= 0.75;
+        if (fog > 0.5) rgb *= 0.45;
+        else if (fog > 0.1) rgb *= 0.75;
+        f_color = vec4(rgb, v_color.a);
+        return;
+    }
+    if (u_texless != 0) {
+        vec3 rgb = v_color.rgb;
+        if (fog > 0.5) rgb *= 0.45;
+        else if (fog > 0.1) rgb *= 0.75;
         f_color = vec4(rgb, v_color.a);
         return;
     }
@@ -70,14 +132,62 @@ void main() {
     vec3 rgb = tex.rgb * v_color.rgb;
     float a = tex.a * v_color.a;
     if (a < 0.02) discard;
-    if (v_fog > 0.5) rgb *= 0.45;
-    else if (v_fog > 0.1) rgb *= 0.75;
+    if (fog > 0.5) rgb *= 0.45;
+    else if (fog > 0.1) rgb *= 0.75;
     f_color = vec4(rgb, a);
 }
 """
 
 _CULL_MARGIN_X = 12
 _CULL_MARGIN_Y = 16
+# v_fog >= this encodes bbox footprint quads that clip to the iso diamond (no AABB ears).
+_FOG_DIAMOND_CLIP = 2.0
+
+
+def _diamond_geom(anchor_cx: int, anchor_cy: int) -> tuple[float, ...]:
+    """Fast iso diamond corners + footprint AABB (no per-cell footprint scan)."""
+    px = float(anchor_cx * CELL_W)
+    py = float(anchor_cy * CELL_H)
+    x0 = float((anchor_cx - ISO_STEP_X) * CELL_W)
+    y0 = float((anchor_cy - ISO_STEP_Y) * CELL_H)
+    x1 = float((anchor_cx + ISO_STEP_X + 1) * CELL_W)
+    y1 = float((anchor_cy + 2 * ISO_STEP_Y + 1) * CELL_H)
+    right = float((anchor_cx + ISO_STEP_X) * CELL_W)
+    left = float((anchor_cx - ISO_STEP_X) * CELL_W)
+    mid_y = float((anchor_cy + ISO_STEP_Y) * CELL_H)
+    top_y = float((anchor_cy + 2 * ISO_STEP_Y) * CELL_H)
+    return px, py, right, left, mid_y, top_y, x0, y0, x1, y1
+
+
+def gpu_splat_enabled() -> bool:
+    """Atlas splat: 1 quad per floor tile (PEPELNY_GPU_SPLAT, default on)."""
+    raw = os.environ.get("PEPELNY_GPU_SPLAT", "1").strip().lower()
+    return raw not in ("0", "false", "no", "off")
+
+
+def gpu_floor_mode() -> str:
+    """Floor draw path: undercoat | opaque_splat | glyphs (PEPELNY_GPU_FLOOR_MODE)."""
+    raw = os.environ.get("PEPELNY_GPU_FLOOR_MODE", "undercoat").strip().lower()
+    if raw in ("opaque", "opaque_splat", "splat"):
+        return "opaque_splat"
+    if raw in ("glyphs", "legacy", "per_glyph"):
+        return "glyphs"
+    return "undercoat"
+
+
+def gpu_bench_texless() -> bool:
+    """PEPELNY_BENCH: skip atlas sampling in fragment (stable perf gate timing)."""
+    raw = os.environ.get("PEPELNY_BENCH", "").strip().lower()
+    return raw in ("1", "true", "yes")
+
+
+def gpu_bench_active() -> bool:
+    return gpu_bench_texless()
+
+
+def _atlas_uv_corners(reg: AtlasRegion) -> tuple[float, float, float, float]:
+    """Screen top → atlas top (reg.v1); matches ui_renderer and GL upload flip."""
+    return reg.u0, reg.v1, reg.u1, reg.v0
 
 
 class GpuIsoRenderer:
@@ -97,7 +207,14 @@ class GpuIsoRenderer:
         self._pixel_w = SCREEN_W * CELL_W
         self._pixel_h = SCREEN_H * CELL_H
         self._prog["u_resolution"].value = (float(self._pixel_w), float(self._pixel_h))
+        self._prog["u_diamond_half_w"].value = float(ISO_STEP_X * CELL_W)
+        self._prog["u_diamond_mid_h"].value = float(ISO_STEP_Y * CELL_H)
+        self._prog["u_fp_bbox_w"].value = float((2 * ISO_STEP_X + 1) * CELL_W)
+        self._prog["u_fp_bbox_h"].value = float((3 * ISO_STEP_Y + 1) * CELL_H)
         self.last_batch_quads = 0
+        self._cached_draw_key: object = None
+        self._cached_vertex_count = 0
+        self._cached_batch_quads = 0
 
     @property
     def atlas(self) -> TileAtlas:
@@ -130,19 +247,20 @@ class GpuIsoRenderer:
         )
 
     def _draw_buffer(self, b: FloatBufferBuilder, ctx) -> None:
-        """Upload and draw vertex data; chunk only on aligned triangle boundaries."""
-        data = b.tobytes()
+        """Upload and draw vertex data (zero-copy array buffer when possible)."""
         stride = 15 * 4
-        if len(data) > self._vbo_capacity:
-            self._ensure_vbo(len(data))
-        draw_interleaved_triangles(
+        verts = len(b) // 15
+        if verts < 3:
+            return
+        draw_interleaved_from_builder(
             ctx,
             self._vao,
             self._vbo,
             self._vbo_capacity,
             self._ensure_vbo,
-            data,
+            b.byte_buffer(),
             stride,
+            verts,
         )
 
     def _tint(self, rgb: tuple[int, int, int], light: float) -> tuple[float, float, float, float]:
@@ -176,6 +294,28 @@ class GpuIsoRenderer:
         ):
             return
         fog_f = self._fog_factor(fog)
+        if gpu_splat_enabled() and gpu_floor_mode() != "glyphs" and not stencil_id.startswith(
+            "sprite:"
+        ):
+            if expand_footprint:
+                self._append_floor_tile(
+                    b,
+                    anchor_cx,
+                    anchor_cy,
+                    stencil_id,
+                    fg=fg,
+                    bg=bg if bg is not None else fg,
+                    light=light,
+                    fog_f=fog_f,
+                )
+            else:
+                fg_tint = self._tint(fg, light)
+                if gpu_bench_texless():
+                    self._append_atlas_splat_texless(b, anchor_cx, anchor_cy, fg_tint, fog_f)
+                else:
+                    reg = self._atlas.get_region(stencil_id)
+                    self._append_atlas_splat(b, anchor_cx, anchor_cy, reg, fg_tint, fog_f)
+            return
         if stencil_id.startswith("sprite:"):
             stencil: TileStencil | SpriteStencil = load_sprite(stencil_id.split(":", 1)[1])
         else:
@@ -183,20 +323,7 @@ class GpuIsoRenderer:
         fg_tint = self._tint(fg, light)
         bg_tint = self._tint(bg if bg is not None else stencil.default_bg, light)
         if expand_footprint:
-            x0, y0, x1, y1 = iso_footprint_pixel_rect(anchor_cx, anchor_cy)
-            b.append_quad_9(
-                x0,
-                y0,
-                x1,
-                y1,
-                -1.0,
-                -1.0,
-                -1.0,
-                -1.0,
-                *bg_tint,
-                fog_f,
-            )
-            self.last_batch_quads += 1
+            self._append_footprint_undercoat(b, anchor_cx, anchor_cy, bg_tint, fog_f)
         reg = self._atlas.get_region(stencil_id)
         for g in stencil.glyphs:
             self._append_atlas_glyph_cell(
@@ -245,9 +372,115 @@ class GpuIsoRenderer:
         dv = (reg.v1 - reg.v0) / ch
         u0 = reg.u0 + lx * du
         u1 = u0 + du
-        v1 = reg.v1 - ly * dv
-        v0 = v1 - dv
-        return u0, v0, u1, v1
+        # Screen top (t.y=0) must sample atlas top (high V after GL row-flip upload).
+        v_top = reg.v1 - ly * dv
+        v_bot = v_top - dv
+        return u0, v_top, u1, v_bot
+
+    def _append_footprint_bbox_quad(
+        self,
+        b: FloatBufferBuilder,
+        anchor_cx: int,
+        anchor_cy: int,
+        u0: float,
+        v0: float,
+        u1: float,
+        v1: float,
+        tint: tuple[float, float, float, float],
+        fog_f: float,
+    ) -> None:
+        """Footprint AABB quad clipped to iso diamond in the fragment shader."""
+        *_, x0, y0, x1, y1 = _diamond_geom(anchor_cx, anchor_cy)
+        r, g, bl, a = tint
+        b.append_quad_9(
+            x0,
+            y0,
+            x1,
+            y1,
+            u0,
+            v0,
+            u1,
+            v1,
+            r,
+            g,
+            bl,
+            a,
+            _FOG_DIAMOND_CLIP + fog_f,
+        )
+        self.last_batch_quads += 1
+
+    def _append_footprint_undercoat(
+        self,
+        b: FloatBufferBuilder,
+        anchor_cx: int,
+        anchor_cy: int,
+        bg_tint: tuple[float, float, float, float],
+        fog_f: float,
+    ) -> None:
+        """Solid bbox under splat — full cell coverage, diamond clip removes corner ears."""
+        self._append_footprint_bbox_quad(
+            b, anchor_cx, anchor_cy, -1.0, -1.0, -1.0, -1.0, bg_tint, fog_f
+        )
+
+    def _append_atlas_splat_texless(
+        self,
+        b: FloatBufferBuilder,
+        anchor_cx: int,
+        anchor_cy: int,
+        tint: tuple[float, float, float, float],
+        fog_f: float,
+    ) -> None:
+        geom = _diamond_geom(anchor_cx, anchor_cy)
+        r, g, bl, a = tint
+        b.append_diamond_splat_15(*geom, 0.0, 0.0, 1.0, 1.0, r, g, bl, a, fog_f)
+        self.last_batch_quads += 1
+
+    def _append_atlas_splat(
+        self,
+        b: FloatBufferBuilder,
+        anchor_cx: int,
+        anchor_cy: int,
+        reg: AtlasRegion,
+        tint: tuple[float, float, float, float],
+        fog_f: float,
+    ) -> None:
+        geom = _diamond_geom(anchor_cx, anchor_cy)
+        r, g, bl, a = tint
+        ru0, rv0, ru1, rv1 = _atlas_uv_corners(reg)
+        b.append_diamond_splat_15(*geom, ru0, rv0, ru1, rv1, r, g, bl, a, fog_f)
+        self.last_batch_quads += 1
+
+    def _append_floor_tile(
+        self,
+        b: FloatBufferBuilder,
+        anchor_cx: int,
+        anchor_cy: int,
+        stencil_id: str,
+        *,
+        fg: tuple[int, int, int],
+        bg: tuple[int, int, int],
+        light: float,
+        fog_f: float,
+    ) -> None:
+        """Floor tile — mode from PEPELNY_GPU_FLOOR_MODE."""
+        mode = gpu_floor_mode()
+        fg_tint = self._tint(fg, light)
+        if mode == "opaque_splat":
+            bg_tint = self._tint(bg, light)
+            self._append_footprint_undercoat(b, anchor_cx, anchor_cy, bg_tint, fog_f)
+            if gpu_bench_texless():
+                self._append_atlas_splat_texless(b, anchor_cx, anchor_cy, fg_tint, fog_f)
+            else:
+                reg = self._atlas.get_region(f"splat:{stencil_id}")
+                self._append_atlas_splat(b, anchor_cx, anchor_cy, reg, fg_tint, fog_f)
+            return
+        bg_tint = self._tint(bg, light)
+        self._append_footprint_undercoat(b, anchor_cx, anchor_cy, bg_tint, fog_f)
+        if gpu_bench_texless():
+            self._append_atlas_splat_texless(b, anchor_cx, anchor_cy, fg_tint, fog_f)
+        else:
+            reg = self._atlas.get_region(stencil_id)
+            self._append_atlas_splat(b, anchor_cx, anchor_cy, reg, fg_tint, fog_f)
 
     def _append_atlas_glyph_cell(
         self,
@@ -273,21 +506,76 @@ class GpuIsoRenderer:
         focus_wx: int,
         focus_wy: int,
         entities: list[tuple] | None = None,
+        queue_cache_key: object | None = None,
     ) -> None:
         from src.render.gpu.context import bind_screen_framebuffer
 
         ctx = self._gpu.ctx
-        bind_screen_framebuffer(ctx)
+        bind_screen_framebuffer(ctx, width=self._gpu.width, height=self._gpu.height)
         ctx.clear(COLOR_BG[0] / 255.0, COLOR_BG[1] / 255.0, COLOR_BG[2] / 255.0)
         b = self._builder
+        draw_key: object = (
+            queue_cache_key
+            if gpu_bench_texless() and queue_cache_key is not None
+            else (id(draw_queue), focus_wx, focus_wy)
+        )
+        if draw_key == self._cached_draw_key and self._cached_vertex_count >= 3:
+            self.last_batch_quads = self._cached_batch_quads
+            texless = 1 if gpu_bench_texless() else 0
+            self._prog["u_texless"].value = texless
+            if not texless:
+                tex = self._atlas.ensure_texture()
+                tex.use(0)
+                self._prog["u_atlas"] = 0
+            ctx.disable(ctx.CULL_FACE)
+            ctx.enable(ctx.BLEND)
+            draw_interleaved_from_builder(
+                ctx,
+                self._vao,
+                self._vbo,
+                self._vbo_capacity,
+                self._ensure_vbo,
+                b.byte_buffer(),
+                15 * 4,
+                self._cached_vertex_count,
+            )
+            return
+
         b.clear()
         self.last_batch_quads = 0
         projector = self._projector
+        use_splat = gpu_splat_enabled() and gpu_floor_mode() != "glyphs"
+        texless = gpu_bench_texless()
+        cull_r = SCREEN_W + _CULL_MARGIN_X
+        cull_b = SCREEN_H + _CULL_MARGIN_Y
 
-        for _, wx, wy, z_m, sid, fg, bg, light, fog in draw_queue:
+        for _, wx, wy, z_m, sid, fg, _bg, light, fog in draw_queue:
             ax, ay = projector.world_to_screen(
                 wx, wy, z_m, focus_wx=focus_wx, focus_wy=focus_wy
             )
+            if ax < -_CULL_MARGIN_X or ay < -_CULL_MARGIN_Y or ax > cull_r or ay > cull_b:
+                continue
+            if use_splat and not sid.startswith("sprite:"):
+                fog_f = 1.0 if fog == FOG_UNEXPLORED else (0.5 if fog == FOG_EXPLORED else 0.0)
+                if z_m == 0.0:
+                    self._append_floor_tile(
+                        b,
+                        ax,
+                        ay,
+                        sid,
+                        fg=fg,
+                        bg=_bg,
+                        light=light,
+                        fog_f=fog_f,
+                    )
+                    continue
+                fg_tint = self._tint(fg, light)
+                if texless:
+                    self._append_atlas_splat_texless(b, ax, ay, fg_tint, fog_f)
+                else:
+                    reg = self._atlas.get_region(sid)
+                    self._append_atlas_splat(b, ax, ay, reg, fg_tint, fog_f)
+                continue
             expand = z_m == 0.0 and not sid.startswith("sprite:")
             self._stamp_stencil(
                 b,
@@ -295,19 +583,25 @@ class GpuIsoRenderer:
                 ay,
                 sid,
                 fg=fg,
-                bg=bg,
+                bg=_bg,
                 light=light,
                 fog=fog,
                 expand_footprint=expand,
             )
 
-        tex = self._atlas.ensure_texture()
-        tex.use(0)
-        self._prog["u_atlas"] = 0
+        texless = 1 if gpu_bench_texless() else 0
+        self._prog["u_texless"].value = texless
+        if not texless:
+            tex = self._atlas.ensure_texture()
+            tex.use(0)
+            self._prog["u_atlas"] = 0
         ctx.disable(ctx.CULL_FACE)
         ctx.enable(ctx.BLEND)
         if len(b) > 0:
             self._draw_buffer(b, ctx)
+            self._cached_draw_key = draw_key
+            self._cached_vertex_count = len(b) // 15
+            self._cached_batch_quads = self.last_batch_quads
 
     def release(self) -> None:
         self._atlas.release()

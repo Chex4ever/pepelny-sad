@@ -35,6 +35,7 @@ class SaveService:
             "inventory": inv,
             "equipment": dict(game.profile.equipment.slots),
             "modules": list(game.profile.installed_modules),
+            "appearance": game.profile.appearance.to_dict() if game.profile.appearance else None,
             "player_pos": (
                 game.overworld.player.tile_pos() if game.overworld else (20, 24)
             ),
@@ -71,6 +72,11 @@ class SaveService:
         for slot, iid in data.get("equipment", {}).items():
             game.profile.equipment.equip(slot, iid)
         game.profile.installed_modules = list(data.get("modules", []))
+        if data.get("appearance"):
+            from src.characters.spec import CharacterSpec
+
+            game.profile.appearance = CharacterSpec.from_dict(data["appearance"])
+        game.profile._pose_cache = None
         game.profile.refresh_capacity()
         game.overworld = OverworldScene(game)
         px, py = data.get("player_pos", (20, 24))

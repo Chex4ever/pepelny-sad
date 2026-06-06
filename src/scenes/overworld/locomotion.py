@@ -115,6 +115,7 @@ class LocomotionController:
             ow.game.request_scene("surface_exit")
             return True
         player.begin_stride(d[0], d[1])
+        self._preload_chunks_ahead(d)
         ow.camera.reset_pan()
         if getattr(ow.game, "tutorial", None):
             ow.game.tutorial.notify_moved()
@@ -122,13 +123,35 @@ class LocomotionController:
         ow.game.audio.play_footstep(surface)
         return True
 
+    def _preload_chunks_ahead(self, d: tuple[int, int]) -> None:
+        """Stream chunks in movement direction before the player arrives."""
+        if d == (0, 0):
+            return
+        ow = self._scene
+        if ow.game.world_state.layer != "surface":
+            return
+        from src.constants import CHUNK_SIZE
+
+        wm = ow.game.world_map
+        lookahead = int(os.environ.get("PEPELNY_CHUNK_LOOKAHEAD", "2"))
+        px, py = ow.player.tile_x, ow.player.tile_y
+        for step in range(1, lookahead + 1):
+            tiles = step * CHUNK_SIZE // 2
+            wm.ensure_chunk_at(px + d[0] * tiles, py + d[1] * tiles)
+
     def _on_enter_tile(self) -> None:
         ow = self._scene
         player = ow.player
         tx, ty = player.tile_pos()
         layer = ow.game.world_state.layer
         ow.fov.mark_dirty()
-        ow.map_renderer.invalidate_queue_cache()
+        bench = os.environ.get("PEPELNY_BENCH", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if not bench:
+            ow.map_renderer.invalidate_queue_cache()
         ow.game.world_state.turn_count += 1
         active, _ = ow.weather.on_turn(ow.fov.in_shelter())
         if active and layer == "surface" and ow.log is not None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.constants import VISIBLE_LOS_RADIUS_SURFACE
+from src.constants import visible_los_radius_surface
 from src.overworld.fov import cast_los_fov
 from src.progression.modules import module_fov_bonus
 
@@ -43,9 +43,14 @@ class FovController:
     def fov_radius(self) -> int:
         layer = self.scene.game.world_state.layer
         if layer == "surface":
-            radius = VISIBLE_LOS_RADIUS_SURFACE
+            radius = visible_los_radius_surface()
             radius += module_fov_bonus(self.scene.game.profile.installed_modules)
-            _, penalty = self.scene.weather.on_turn(self.in_shelter())
+            # Weather advances on tile enter (locomotion); do not tick every radius query.
+            penalty = (
+                2
+                if self.scene.weather.active and not self.in_shelter()
+                else 0
+            )
             return max(16, radius - penalty)
         return 14
 

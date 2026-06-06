@@ -1,0 +1,13 @@
+{
+  "bark_oak_brown": {"fg": [130, 95, 60], "bg": [35, 28, 20]},
+  "bark_birch_white": {"fg": [210, 205, 195], "bg": [45, 42, 38]},
+  "bark_pine_dark": {"fg": [90, 70, 50], "bg": [28, 22, 18]},
+  "bark_baobab_gray": {"fg": [145, 130, 110], "bg": [40, 36, 32]},
+  "bark_generic": {"fg": [110, 85, 55], "bg": [30, 25, 18]},
+  "foliage_spring_green": {"fg": [65, 120, 65], "bg": [22, 38, 22]},
+  "foliage_dark_green": {"fg": [45, 90, 45], "bg": [18, 32, 18]},
+  "foliage_autumn_gold": {"fg": [180, 140, 50], "bg": [40, 32, 18]},
+  "foliage_needle": {"fg": [55, 100, 55], "bg": [18, 30, 18]},
+  "foliage_pale_green": {"fg": [85, 130, 75], "bg": [25, 40, 25]},
+  "dead_wood": {"fg": [80, 70, 60], "bg": [25, 22, 20]}
+}

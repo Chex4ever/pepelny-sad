@@ -89,6 +89,7 @@ class CharacterSheetWindow(ModalWindow):
                         eslot = data.get("slot", "hand_r")
                         profile.equipment.equip(eslot, slot.item_id)
                         profile.inventory.remove(slot.item_id, 1)
+                        profile.sync_appearance_equipment()
                     elif data and data.get("type") == "module":
                         if profile.install_module(slot.item_id):
                             profile.inventory.remove(slot.item_id, 1)

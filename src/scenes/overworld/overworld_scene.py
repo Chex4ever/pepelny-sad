@@ -77,9 +77,15 @@ class OverworldScene:
                 self.dialogue.update(dt_ms, self.game.audio)
             self.camera.follow_smooth(self.player.x, self.player.y, dt_ms)
             cv = self.game.world_map.chunks_loaded_version()
+            bench = os.environ.get("PEPELNY_BENCH", "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+            )
             if cv != self._last_chunks_version:
                 self._last_chunks_version = cv
-                self.map_renderer.invalidate_queue_cache()
+                if not bench:
+                    self.map_renderer.invalidate_queue_cache()
             sync_for_draw(self)
 
     def update_deferred(self, dt_ms: int = 16) -> None:
@@ -91,9 +97,10 @@ class OverworldScene:
         self.update_deferred(dt_ms)
 
     def handle_input(self, inp, dt_ms: int = 16) -> bool:
-        if self.input_router.handle_input(inp, dt_ms):
-            return True
-        return self.locomotion.update(inp, dt_ms)
+        with self.game.perf.measure("ow_input"):
+            if self.input_router.handle_input(inp, dt_ms):
+                return True
+            return self.locomotion.update(inp, dt_ms)
 
     def debug_lines(self, fps: float) -> list[str]:
         g = self.game

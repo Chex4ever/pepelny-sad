@@ -37,11 +37,14 @@ def draw_interleaved_triangles(
     vbo: Any,
     vbo_capacity: int,
     ensure_vbo: Callable[[int], None],
-    data: bytes,
+    data: bytes | memoryview,
     stride: int,
 ) -> None:
     """Upload interleaved verts and draw as GL_TRIANGLES without splitting triangles."""
-    data = align_triangle_bytes(data, stride)
+    nbytes = data.nbytes if isinstance(data, memoryview) else len(data)
+    data = align_triangle_bytes(
+        data.tobytes() if isinstance(data, memoryview) else data, stride
+    )
     if not data:
         return
     if len(data) <= vbo_capacity:
@@ -53,3 +56,30 @@ def draw_interleaved_triangles(
         ensure_vbo(len(chunk))
         vbo.write(chunk)
         vao.render(mode=ctx.TRIANGLES, vertices=len(chunk) // stride)
+
+
+def draw_interleaved_from_builder(
+    ctx: Any,
+    vao: Any,
+    vbo: Any,
+    vbo_capacity: int,
+    ensure_vbo: Callable[[int], None],
+    byte_view: memoryview,
+    stride: int,
+    vertex_count: int,
+) -> None:
+    """Single upload + draw when vertex count is already triangle-aligned."""
+    if vertex_count < 3 or vertex_count % 3 != 0:
+        return
+    nbytes = vertex_count * stride
+    if nbytes <= 0:
+        return
+    if nbytes <= vbo_capacity:
+        ensure_vbo(nbytes)
+        vbo.write(byte_view[:nbytes])
+        vao.render(mode=ctx.TRIANGLES, vertices=vertex_count)
+        return
+    data = bytes(byte_view[:nbytes])
+    draw_interleaved_triangles(
+        ctx, vao, vbo, vbo_capacity, ensure_vbo, data, stride
+    )

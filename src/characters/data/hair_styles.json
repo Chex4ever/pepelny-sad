@@ -1,0 +1,53 @@
+{
+  "human": {
+    "short": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]],
+    "medium": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [0, 0, 3, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]],
+    "long": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [0, 0, 3, "hair"], [0, -1, 3, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]],
+    "braided": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, -1, 2, "hair"]],
+    "bald": []
+  },
+  "elf": {
+    "long_flow": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [0, 0, 3, "hair"], [0, -1, 3, "hair"], [0, -2, 3, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]],
+    "knotted": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]],
+    "half_up": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, -1, 2, "hair"]],
+    "warrior_knot": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]]
+  },
+  "dwarf": {
+    "braided": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]],
+    "topknot": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [0, 1, 2, "hair"]],
+    "bald": [],
+    "long_beard_only": []
+  },
+  "orc": {
+    "mohawk": [[0, 0, 1, "hair"], [0, 1, 2, "hair"], [0, 1, 3, "hair"]],
+    "topknot": [[0, 0, 1, "hair"], [0, 1, 2, "hair"]],
+    "shaved": []
+  },
+  "ashkin": {
+    "short_tattered": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"]],
+    "hood_down": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 1, "hair"], [1, 0, 1, "hair"]],
+    "bald": []
+  },
+  "rootbound": {
+    "vine_crown": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, 1, 2, "hair"]],
+    "moss_cap": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, 1, 1, "hair"]],
+    "bald": []
+  },
+  "whisper": {
+    "wisp_long": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [0, -1, 2, "hair"]],
+    "wisp_short": [[0, 0, 1, "hair"], [-1, 0, 1, "hair"], [1, 0, 1, "hair"]],
+    "hood": [[0, 0, 1, "hair"], [-1, 0, 1, "hair"], [1, 0, 1, "hair"], [0, 1, 1, "hair"]]
+  },
+  "stoneheart": {
+    "bald": [],
+    "crystal_crest": [[0, 0, 1, "feature"], [0, 1, 2, "feature"], [-1, 0, 2, "feature"], [1, 0, 2, "feature"]]
+  },
+  "_beard": {
+    "stubble": [[0, -1, 0, "hair"], [-1, -1, 0, "hair"], [1, -1, 0, "hair"]],
+    "full": [[0, -1, 0, "hair"], [0, -2, 0, "hair"], [-1, -1, 0, "hair"], [1, -1, 0, "hair"]],
+    "braided": [[0, -1, 0, "hair"], [0, -2, 0, "hair"], [0, -3, 0, "hair"]],
+    "twin": [[-1, -1, 0, "hair"], [1, -1, 0, "hair"], [-1, -2, 0, "hair"], [1, -2, 0, "hair"]],
+    "floor": [[0, -1, 0, "hair"], [0, -2, 0, "hair"], [0, -3, 0, "hair"], [0, -4, 0, "hair"]],
+    "tusks_only": [[-1, -1, 0, "feature"], [1, -1, 0, "feature"]]
+  }
+}
