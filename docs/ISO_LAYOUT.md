@@ -11,7 +11,7 @@ One floor layout everywhere: **3×2 char stamps** `@@_/_@@` on a diagonal tile l
 | **−Y** | north | `n` → `(0, −1)` |
 | **+Z** | up (metres) | height |
 
-Screen (pygame): **sx right**, **sy down**. Z up → sy decreases.
+Screen (pygame): **sx right**, **sy down**.
 
 ## Stamp (one floor tile)
 
@@ -20,92 +20,72 @@ Screen (pygame): **sx right**, **sy down**. Z up → sy decreases.
 _@@
 ```
 
-Four `@` cells = four glyph positions. **One tile → one test letter → 4 copies** on the layout golden.
+Four `@` cells per tile. Scale: **5×5 tiles = 1 m × 1 m** (`TILES_PER_M_XY=5`).
 
-- **Stamp:** `STAMP_PREVIEW = ("@@_/_@@", "_@@")`
-- **Tip:** `stamp_tip(tx, ty) = (tx − ty, tx + ty)` in tessellation char space
-- **Origin:** `stamp_origin(tx, ty) = tip − (1, 1)`
-- **Neighbors:** six shared-edge tiles via `tile_neighbors()` on `(tx, ty)`
+## What you see in `character_editor` — packed layout diamond
 
-## Scale
-
-| Axis | Tiles per meter |
-|------|-----------------|
-| XY   | 5 (`TILES_PER_M_XY`) |
-| Z    | 10 (`TILES_PER_M_Z`) |
-
-Editor floor: **5×5 tiles** = **1 m × 1 m** patch centered on the character feet.
-
-## Screen projection (2:1 steps)
-
-Separate from stamp **3×2** shape. Used when drawing char coords on screen:
+**This is what the user golden describes.** The editor draws the floor on a **19×10 packed layout grid** — the same grid as `EDITOR_FLOOR_5X5_TILE_REFERENCE`:
 
 ```
-su = (cx − ref_x − (cy − ref_y)) × ISO_STEP_X    # ISO_STEP_X = 2
-sv = (cx − ref_x + (cy − ref_y)) × ISO_STEP_Y    # ISO_STEP_Y = 1
+____kk_____________     row width 2
+___ggkkpp__________     row width 6
+...
+aabbeehhmmqquuwwyy_     row width 18  ← widest
+...
+_____________oo____     row width 2
 ```
 
-One world/char step effects on screen (same as `IsoProjector`):
+Row widths: `(2, 6, 10, 14, 18, 18, 14, 10, 6, 2)` — a **diamond**, flat top/bottom parallel to screen X.
 
-| Step `(dx, dy)` | Δsu | Δsv | On screen |
-|-----------------|-----|-----|-----------|
-| **+X** `(1, 0)` | +2 | +1 | down-right |
-| **+Y** `(0, 1)` south | −2 | +1 | down-left |
-| **−Y** `(0, −1)` north | +2 | −1 | up-right |
-| **−X** `(-1, 0)` | −2 | −1 | up-left |
+| Property | Value |
+|----------|--------|
+| Canvas | 19 cols × 10 rows |
+| Draw API | `floor_packed_draw_map()` + `TILE_SLOT_VIEW` |
+| Feet anchor | `(PACKED_LAYOUT_FEET_COL, PACKED_LAYOUT_FEET_ROW)` = `(9, 5)` |
+| Screen offset | `(col − 9, row − 5)` — **axis-aligned**, not iso-skewed |
+| Test | `test_editor_floor_draw_matches_golden_diamond_silhouette` |
 
-```
-              −Y (north)
-                 ↗
-                /
-    −X ←-------●------→ +X
-                \
-                 ↘
-              +Y (south)
-```
-
-**2:1** = horizontal screen step is **twice** the vertical step along these axes (`ISO_STEP_X : ISO_STEP_Y = 2 : 1`).
-
-## Two tests — do not confuse them
-
-| Test | What it checks | Golden |
-|------|----------------|--------|
-| **Layout packed** | Stamp `@` positions packed to ASCII (labels only) | `EDITOR_FLOOR_5X5_TILE_REFERENCE` (19×10, 25×4 letters) |
-| **Editor iso screen** | What `character_editor` draws: span-filled iso cells, **no row gaps** | `assert_floor_has_no_holes()` + `floor_iso_draw_map()` |
-
-The layout golden is **not** a screenshot of grass. The editor test verifies **continuous floor** on iso screen (row spans filled between projected `@` cells).
+**Not** the same as projecting tessellation char cells through `floor_screen_offset` (iso skew) — that yields a **rectangle / staircase**, not this diamond.
 
 ### Layout golden rules
 
-1. 25 tiles → 25 letters (`a`…`y`), each **4 times** (100 chars).
-2. `aa` on one row = two `@` of the **same** tile side by side.
-3. `_` = padding; no row gaps inside the diamond.
+1. 25 tiles → 25 letters in the test sketch (`a`…`y`), each **4 times** (100 glyph cells).
+2. `aa` on one row = two adjacent `@` of the same tile (pair columns in the sketch).
+3. In game: grass/checkerboard on the same cells; letters are test labels only.
 
-Example:
+## 2:1 iso projection (overworld / voxels only)
+
+Used for **character voxels** (`IsoProjector`, `_project_point`) and **overworld** — **not** for editor floor placement:
 
 ```
-____kk_____________
-___ggkkpp__________
-aabbeehhmmqquuwwyy_
+su = (dx − dy) × 2
+sv = (dx + dy) × 1
 ```
+
+| Step in world | On screen |
+|---------------|-----------|
+| +X | down-right |
+| +Y (south) | down-left |
+| −Y (north) | up-right |
+
+See `IsoProjector.screen_delta_to_world` for walk directions.
 
 ## Orientation test — 2×2 patch
 
-All **16** `@` slots, one letter each. Golden: `EDITOR_FLOOR_2X2_ORIENTATION_REFERENCE`. Separate rules from 5×5.
+Separate golden: `EDITOR_FLOOR_2X2_ORIENTATION_REFERENCE` (16 single-char slots).
 
-## Walking vs tessellation
+## Tessellation vs walk
 
-| | Directions | Coordinates |
-|---|------------|-------------|
-| **Tessellation** | 6 neighbors | `(tx, ty)` |
-| **Overworld walk** | 4 screen steps (↑↓←→) | `(wx, wy)` via `IsoProjector.screen_delta_to_world` |
+| | Neighbors | Coords |
+|---|-----------|--------|
+| Floor tessellation | 6 | `(tx, ty)` |
+| Overworld walk | 4 screen steps | `(wx, wy)` |
 
 ## Code map
 
 | Module | Role |
 |--------|------|
-| `editor_floor.py` | Stamp patch, iso draw map, hole checks |
-| `editor_floor_test_tiles.py` | Layout golden + `render_packed_test_floor()` |
-| `iso_character_renderer.py` | Draws `floor_iso_draw_map()` in editor |
-| `tests/unit/test_editor_floor_iso.py` | Iso screen + packed golden |
-| `tests/unit/test_editor_floor_tile_reference.py` | Layout golden char-by-char |
+| `editor_floor_test_tiles.py` | `TILE_SLOT_VIEW`, layout golden, `packed_layout_silhouette()` |
+| `editor_floor.py` | `floor_packed_draw_map()` |
+| `iso_character_renderer.py` | Draws packed `(col, row)` grid |
+| `test_editor_floor_iso.py` | Diamond silhouette + “iso ≠ editor shape” regression |

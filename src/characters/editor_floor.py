@@ -175,8 +175,57 @@ def floor_iso_view_offsets_span_filled(
     *,
     n_tiles: int = EDITOR_FLOOR_TILES,
 ) -> frozenset[tuple[int, int]]:
-    """Iso screen cells used when drawing the editor floor (row spans filled, no gaps)."""
-    return frozenset(floor_iso_draw_map(feet_cx, feet_cy, n_tiles=n_tiles))
+    """Packed layout screen offsets for editor floor draw (diamond, feet at origin)."""
+    return floor_packed_layout_offsets(feet_cx, feet_cy, n_tiles=n_tiles)
+
+
+def floor_packed_draw_map(
+    feet_cx: int,
+    feet_cy: int,
+    *,
+    n_tiles: int = EDITOR_FLOOR_TILES,
+    seed: int = 0,
+) -> dict[tuple[int, int], FloorGlyphCell]:
+    """Map packed layout (col, row) → floor cell — same grid as ``EDITOR_FLOOR_5X5_TILE_REFERENCE``."""
+    from src.characters.editor_floor_test_tiles import (
+        STAMP_CELL_ORDER,
+        TILE_SLOT_VIEW,
+    )
+
+    by_char: dict[tuple[int, int], FloorGlyphCell] = {
+        (c.cx, c.cy): c
+        for c in build_floor_patch(feet_cx, feet_cy, n_tiles=n_tiles, seed=seed)
+    }
+    center = n_tiles // 2
+    ref_ox, ref_oy = stamp_origin(center, center)
+    out: dict[tuple[int, int], FloorGlyphCell] = {}
+    for (tx, ty, slot), (row, col) in TILE_SLOT_VIEW.items():
+        ox, oy = stamp_origin(tx, ty)
+        dx, dy = STAMP_CELL_ORDER[slot]
+        gx = feet_cx + ox - ref_ox + dx
+        gy = feet_cy + oy - ref_oy + dy
+        cell = by_char.get((gx, gy))
+        if cell is None:
+            continue
+        out[(col, row)] = cell
+        out[(col + 1, row)] = cell
+    return out
+
+
+def floor_packed_layout_offsets(
+    feet_cx: int,
+    feet_cy: int,
+    *,
+    n_tiles: int = EDITOR_FLOOR_TILES,
+    seed: int = 0,
+) -> frozenset[tuple[int, int]]:
+    """Screen offsets (lu, lv) for every cell the editor draws on the packed diamond."""
+    from src.characters.editor_floor_test_tiles import packed_layout_screen_offset
+
+    draw = floor_packed_draw_map(feet_cx, feet_cy, n_tiles=n_tiles, seed=seed)
+    return frozenset(
+        packed_layout_screen_offset(col, row) for col, row in draw
+    )
 
 
 def floor_iso_draw_map(
@@ -246,14 +295,23 @@ def assert_floor_has_no_holes(
     *,
     n_tiles: int = EDITOR_FLOOR_TILES,
 ) -> None:
-    """Raise AssertionError if editor iso floor or packed layout golden has row gaps."""
-    span = floor_iso_view_offsets_span_filled(feet_cx, feet_cy, n_tiles=n_tiles)
-    iso_gaps = floor_row_gap_count(span)
-    if iso_gaps:
-        raise AssertionError(f"editor iso floor has {iso_gaps} row gap(s) on screen")
-    internal = internal_footprint_holes(set(span))
-    if internal:
-        raise AssertionError(f"floor has {len(internal)} internal holes, e.g. {internal[:4]}")
+    """Raise AssertionError if editor packed draw or layout golden has gaps."""
+    from src.characters.editor_floor_test_tiles import packed_layout_silhouette
+
+    draw = floor_packed_draw_map(feet_cx, feet_cy, n_tiles=n_tiles)
+    silhouette = packed_layout_silhouette()
+    if set(draw.keys()) != set(silhouette):
+        missing = silhouette - set(draw.keys())
+        extra = set(draw.keys()) - silhouette
+        raise AssertionError(
+            f"editor floor draw cells differ from golden silhouette "
+            f"(missing {len(missing)}, extra {len(extra)}, e.g. missing {list(missing)[:3]})"
+        )
+    layout_gaps = floor_row_gap_count(
+        frozenset((col, row) for col, row in draw)
+    )
+    if layout_gaps:
+        raise AssertionError(f"packed layout draw has {layout_gaps} row gap(s)")
     packed = rasterize_floor_packed_view(feet_cx, feet_cy, n_tiles=n_tiles)
     gaps = packed_canvas_row_gap_count(packed)
     if gaps:
@@ -325,10 +383,10 @@ def floor_solid_has_internal_holes(
     *,
     n_tiles: int = EDITOR_FLOOR_TILES,
 ) -> list[tuple[int, int]]:
-    """Empty iso-screen cells fully surrounded by span-filled editor floor (should be none)."""
-    return internal_footprint_holes(
-        floor_iso_view_offsets_span_filled(feet_cx, feet_cy, n_tiles=n_tiles)
-    )
+    """Empty cells fully surrounded by packed layout diamond (should be none)."""
+    from src.characters.editor_floor_test_tiles import packed_layout_silhouette
+
+    return internal_footprint_holes(set(packed_layout_silhouette()))
 
 
 def floor_tile_index_bounds(
