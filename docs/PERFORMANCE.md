@@ -22,7 +22,7 @@ ow_input → map_queue (cache hit) → gpu_map (VBO cache) → gpu_ui → gpu_sw
 
 ## GPU floor: footprint + stencil (два слоя)
 
-Мировая клетка на экране — **ромб** (2:1 iso), не axis-aligned квадрат. «Спрайт» пола в данных — **stencil** (несколько ASCII-глифов, напр. `grass.txt`), а не bitmap на весь тайл.
+Мировая клетка на экране — **ромб** (2:1 iso), не axis-aligned квадрат. Footprint только diamond (`iso_footprint.py`); см. `docs/ISO_LAYOUT.md`.
 
 | Слой | CPU | GPU (default) | Назначение |
 |------|-----|---------------|------------|
