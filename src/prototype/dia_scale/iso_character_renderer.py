@@ -14,6 +14,7 @@ from src.characters.editor_diagnostics import DiagnosticMarker, DiagnosticReport
 from src.characters.editor_floor import (
     FloorGlyphCell,
     build_floor_patch,
+    floor_iso_draw_map,
     floor_screen_offset,
     floor_solid_char_cells,
 )
@@ -143,13 +144,17 @@ class IsoCharacterRenderer:
         ch: int,
         lighting: EditorLighting,
         floor_shadow: set[tuple[int, int]],
+        floor_seed: int = 0,
     ) -> None:
-        """5×5 diag iso floor via 2:1 screen projection."""
-        for cell in floor_cells:
-            su, sv = floor_screen_offset(
-                cell.cx, cell.cy,
-                ref_cx=feet_cx, ref_cy=feet_cy,
-            )
+        """5×5 diag stamp floor on iso screen (row spans filled — no gaps)."""
+        draw_map = floor_iso_draw_map(
+            feet_cx, feet_cy, seed=floor_seed,
+        )
+        drawn_char: set[tuple[int, int]] = {
+            floor_screen_offset(c.cx, c.cy, ref_cx=feet_cx, ref_cy=feet_cy)
+            for c in floor_cells
+        }
+        for (su, sv), cell in draw_map.items():
             px = ox + su * cw
             py = oy + sv * ch
             b = brightness_at(float(cell.cx), float(cell.cy), 0.0, lighting=lighting, up_bias=1.0)
@@ -158,7 +163,7 @@ class IsoCharacterRenderer:
             fg, bg = shade_from_brightness(cell.fg, cell.bg, b)
             rect = pygame.Rect(px, py, cw, ch)
             pygame.draw.rect(surf, bg, rect)
-            if cw >= 4 and ch >= 6 and cell.ch.strip():
+            if (su, sv) in drawn_char and cw >= 4 and ch >= 6 and cell.ch.strip():
                 surf.blit(self._font.render(cell.ch, True, fg), (px, py))
 
     def _blink_on(self, *, freq: float = 3.5) -> bool:
@@ -298,6 +303,7 @@ class IsoCharacterRenderer:
                     ch=ch,
                     lighting=lit,
                     floor_shadow=floor_shadow,
+                    floor_seed=floor_seed,
                 )
 
             projected_raw.sort(key=lambda t: (t[0], t[2], t[1]))

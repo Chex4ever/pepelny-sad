@@ -1,11 +1,11 @@
-"""Editor floor: diag iso layout, iso screen projection, no internal holes."""
+"""Editor floor: diag stamp tessellation, iso screen draw, layout golden."""
 from __future__ import annotations
 
 import pytest
 
 
 @pytest.mark.unit
-def test_floor_patch_has_25_diag_tiles():
+def test_floor_patch_has_25_tiles_60_stamp_cells():
     from src.characters.editor_floor import (
         build_floor_patch,
         floor_solid_char_cells,
@@ -16,27 +16,37 @@ def test_floor_patch_has_25_diag_tiles():
     patch = build_floor_patch(0, 0, seed=2)
     solid = floor_solid_char_cells(0, 0)
     assert len(floor_tile_anchors(0, 0)) == EDITOR_FLOOR_TILES ** 2
-    assert len(patch) == len(solid)
-    assert len(solid) > 0
+    assert len(solid) == 60
+    assert len(patch) == 60
 
 
 @pytest.mark.unit
-def test_floor_iso_view_has_no_internal_holes():
+def test_floor_iso_screen_draw_has_no_row_gaps():
+    """What character_editor draws: span-filled iso screen must have zero row gaps."""
     from src.characters.editor_floor import (
         assert_floor_has_no_holes,
+        floor_iso_draw_map,
         floor_iso_view_offsets,
+        floor_iso_view_offsets_span_filled,
+        floor_row_gap_count,
         floor_solid_has_internal_holes,
         packed_canvas_row_gap_count,
         rasterize_floor_packed_view,
     )
     from src.characters.editor_floor_test_tiles import EDITOR_FLOOR_5X5_TILE_REFERENCE
-    from src.render.iso_footprint import internal_footprint_holes
 
+    raw = floor_iso_view_offsets(0, 0)
+    assert floor_row_gap_count(raw) > 0, "raw @ projection has gaps (expected before span fill)"
+
+    span = floor_iso_view_offsets_span_filled(0, 0)
+    assert floor_row_gap_count(span) == 0
     assert floor_solid_has_internal_holes(0, 0) == []
-    assert internal_footprint_holes(floor_iso_view_offsets(0, 0)) == []
+    assert len(floor_iso_draw_map(0, 0)) == len(span)
+
     assert_floor_has_no_holes(0, 0)
     assert_floor_has_no_holes(10, 20)
     assert_floor_has_no_holes(-3, 7)
+
     packed = rasterize_floor_packed_view(0, 0)
     assert packed == EDITOR_FLOOR_5X5_TILE_REFERENCE
     assert packed_canvas_row_gap_count(packed) == 0
@@ -82,15 +92,15 @@ def test_floor_screen_offset_matches_iso_formula():
 
 
 @pytest.mark.unit
-def test_renderer_uses_iso_screen_offsets():
+def test_renderer_draws_span_filled_iso_floor():
     import pygame
 
     pygame.init()
     from src.characters.bake import bake_voxel_model
     from src.characters.editor_floor import (
         build_floor_patch,
-        floor_iso_view_offsets,
-        floor_screen_offset,
+        floor_iso_draw_map,
+        floor_iso_view_offsets_span_filled,
     )
     from src.characters.spec import CharacterSpec
     from src.prototype.dia_scale.display_scale import PRESET_NORMAL
@@ -99,15 +109,11 @@ def test_renderer_uses_iso_screen_offsets():
     model = bake_voxel_model(CharacterSpec("human", 42, 30), pose_id="idle_s")
     renderer = IsoCharacterRenderer(preset=PRESET_NORMAL, panel_w=400, panel_h=400)
     feet_cx, feet_cy = int(model.anchor_x), int(model.anchor_y)
-    floor_cells = build_floor_patch(feet_cx, feet_cy, seed=11)
+    build_floor_patch(feet_cx, feet_cy, seed=11)
     renderer.render(model, show_floor=True, show_shading=False, show_diagnostics=False, floor_seed=11)
 
-    iso = floor_iso_view_offsets(feet_cx, feet_cy)
-    projected = {
-        floor_screen_offset(c.cx, c.cy, ref_cx=feet_cx, ref_cy=feet_cy)
-        for c in floor_cells
-    }
-    assert projected == iso
+    span = floor_iso_view_offsets_span_filled(feet_cx, feet_cy)
+    assert set(floor_iso_draw_map(feet_cx, feet_cy, seed=11)) == span
     pygame.quit()
 
 

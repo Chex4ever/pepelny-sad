@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from src.constants import ISO_STEP_X, ISO_STEP_Y
 from src.prototype.dia_scale.constants import COLOR_FLOOR_ALT_FG, COLOR_FLOOR_FG
 from src.prototype.dia_scale.tessellation import stamp_cells_at, stamp_origin, stamp_tip
-from src.render.iso_footprint import iso_footprint_cells, internal_footprint_holes
+from src.render.iso_footprint import internal_footprint_holes
 from src.render.iso_character_view import EDITOR_FLOOR_TILES
 
 # Checkerboard per tile (tx, ty).
@@ -84,17 +84,34 @@ def floor_tile_anchors(
     return out
 
 
+def floor_stamp_tile_owners(
+    feet_cx: int,
+    feet_cy: int,
+    *,
+    n_tiles: int = EDITOR_FLOOR_TILES,
+) -> dict[tuple[int, int], tuple[int, int]]:
+    """Char cell → owning floor tile (tx, ty) for every ``@`` in the 5×5 stamp patch."""
+    center = n_tiles // 2
+    ref_ox, ref_oy = stamp_origin(center, center)
+    owners: dict[tuple[int, int], tuple[int, int]] = {}
+    for ty in range(n_tiles):
+        for tx in range(n_tiles):
+            ox, oy = stamp_origin(tx, ty)
+            for cx, cy in stamp_cells_at(ox, oy):
+                gx = feet_cx + cx - ref_ox
+                gy = feet_cy + cy - ref_oy
+                owners[(gx, gy)] = (tx, ty)
+    return owners
+
+
 def floor_solid_char_cells(
     feet_cx: int,
     feet_cy: int,
     *,
     n_tiles: int = EDITOR_FLOOR_TILES,
 ) -> set[tuple[int, int]]:
-    """Union of iso footprints for 5×5 diag tiles (1 m), centered on feet."""
-    solid: set[tuple[int, int]] = set()
-    for _tx, _ty, ax, ay in floor_tile_anchors(feet_cx, feet_cy, n_tiles=n_tiles):
-        solid.update(iso_footprint_cells(ax, ay))
-    return solid
+    """All ``@`` stamp char cells in the 1 m diag floor patch."""
+    return set(floor_stamp_tile_owners(feet_cx, feet_cy, n_tiles=n_tiles))
 
 
 def floor_stamp_char_cells(
@@ -124,24 +141,17 @@ def build_floor_patch(
     n_tiles: int = EDITOR_FLOOR_TILES,
     seed: int = 0,
 ) -> list[FloorGlyphCell]:
-    """Solid 1 m diag iso floor + checkerboard tile colors + grass on @ cells."""
-    stamps = floor_stamp_char_cells(feet_cx, feet_cy, n_tiles=n_tiles)
+    """1 m diag stamp floor: checkerboard per (tx, ty), grass on each ``@`` cell."""
+    owners = floor_stamp_tile_owners(feet_cx, feet_cy, n_tiles=n_tiles)
     cells: dict[tuple[int, int], FloorGlyphCell] = {}
-    for tx, ty, ax, ay in floor_tile_anchors(feet_cx, feet_cy, n_tiles=n_tiles):
+    for (cx, cy), (tx, ty) in owners.items():
         even = (tx + ty) % 2 == 0
         tile_bg = FLOOR_TILE_A_BG if even else FLOOR_TILE_B_BG
-        tile_fg = FLOOR_TILE_A_FG if even else FLOOR_TILE_B_FG
-        for cx, cy in iso_footprint_cells(ax, ay):
-            if (cx, cy) in cells:
-                continue
-            if (cx, cy) in stamps:
-                cell_rng = random.Random(seed ^ (cx * 977 + cy * 131 + 0xF100))
-                ch, fg = _grass_glyph(cell_rng)
-            else:
-                ch, fg = ".", tile_fg
-            cells[(cx, cy)] = FloorGlyphCell(
-                cx, cy, ch, fg, tile_bg, solid=True, tile_tx=tx, tile_ty=ty,
-            )
+        cell_rng = random.Random(seed ^ (cx * 977 + cy * 131 + 0xF100))
+        ch, fg = _grass_glyph(cell_rng)
+        cells[(cx, cy)] = FloorGlyphCell(
+            cx, cy, ch, fg, tile_bg, solid=True, tile_tx=tx, tile_ty=ty,
+        )
     return list(cells.values())
 
 
@@ -151,12 +161,52 @@ def floor_iso_view_offsets(
     *,
     n_tiles: int = EDITOR_FLOOR_TILES,
 ) -> frozenset[tuple[int, int]]:
-    """Iso screen (su, sv) for every solid floor char cell."""
+    """Iso screen (su, sv) for every ``@`` stamp cell (one char cell → one screen cell)."""
     solid = floor_solid_char_cells(feet_cx, feet_cy, n_tiles=n_tiles)
     return frozenset(
         floor_screen_offset(cx, cy, ref_cx=feet_cx, ref_cy=feet_cy)
         for cx, cy in solid
     )
+
+
+def floor_iso_view_offsets_span_filled(
+    feet_cx: int,
+    feet_cy: int,
+    *,
+    n_tiles: int = EDITOR_FLOOR_TILES,
+) -> frozenset[tuple[int, int]]:
+    """Iso screen cells used when drawing the editor floor (row spans filled, no gaps)."""
+    return frozenset(floor_iso_draw_map(feet_cx, feet_cy, n_tiles=n_tiles))
+
+
+def floor_iso_draw_map(
+    feet_cx: int,
+    feet_cy: int,
+    *,
+    n_tiles: int = EDITOR_FLOOR_TILES,
+    seed: int = 0,
+) -> dict[tuple[int, int], FloorGlyphCell]:
+    """Map iso (su, sv) → floor cell for renderer; fills horizontal gaps per row."""
+    by_iso: dict[tuple[int, int], FloorGlyphCell] = {}
+    for cell in build_floor_patch(feet_cx, feet_cy, n_tiles=n_tiles, seed=seed):
+        su, sv = floor_screen_offset(
+            cell.cx, cell.cy, ref_cx=feet_cx, ref_cy=feet_cy,
+        )
+        by_iso[(su, sv)] = cell
+
+    by_row: dict[int, list[int]] = {}
+    for su, sv in by_iso:
+        by_row.setdefault(sv, []).append(su)
+
+    out = dict(by_iso)
+    for sv, us in by_row.items():
+        u_lo, u_hi = min(us), max(us)
+        for su in range(u_lo, u_hi + 1):
+            if (su, sv) in out:
+                continue
+            nearest = min(us, key=lambda u: abs(u - su))
+            out[(su, sv)] = by_iso[(nearest, sv)]
+    return out
 
 
 def floor_row_gap_count(view: frozenset[tuple[int, int]] | set[tuple[int, int]]) -> int:
@@ -196,15 +246,18 @@ def assert_floor_has_no_holes(
     *,
     n_tiles: int = EDITOR_FLOOR_TILES,
 ) -> None:
-    """Raise AssertionError if iso floor view or packed 19×10 canvas has holes."""
-    view = floor_iso_view_offsets(feet_cx, feet_cy, n_tiles=n_tiles)
-    internal = internal_footprint_holes(set(view))
+    """Raise AssertionError if editor iso floor or packed layout golden has row gaps."""
+    span = floor_iso_view_offsets_span_filled(feet_cx, feet_cy, n_tiles=n_tiles)
+    iso_gaps = floor_row_gap_count(span)
+    if iso_gaps:
+        raise AssertionError(f"editor iso floor has {iso_gaps} row gap(s) on screen")
+    internal = internal_footprint_holes(set(span))
     if internal:
         raise AssertionError(f"floor has {len(internal)} internal holes, e.g. {internal[:4]}")
     packed = rasterize_floor_packed_view(feet_cx, feet_cy, n_tiles=n_tiles)
     gaps = packed_canvas_row_gap_count(packed)
     if gaps:
-        raise AssertionError(f"packed floor view has {gaps} row gap(s)")
+        raise AssertionError(f"packed layout golden has {gaps} row gap(s)")
 
 
 def packed_canvas_row_gap_count(rows: tuple[str, ...]) -> int:
@@ -272,8 +325,10 @@ def floor_solid_has_internal_holes(
     *,
     n_tiles: int = EDITOR_FLOOR_TILES,
 ) -> list[tuple[int, int]]:
-    """Empty iso-screen cells fully surrounded by solid floor (should be none)."""
-    return internal_footprint_holes(floor_iso_view_offsets(feet_cx, feet_cy, n_tiles=n_tiles))
+    """Empty iso-screen cells fully surrounded by span-filled editor floor (should be none)."""
+    return internal_footprint_holes(
+        floor_iso_view_offsets_span_filled(feet_cx, feet_cy, n_tiles=n_tiles)
+    )
 
 
 def floor_tile_index_bounds(
