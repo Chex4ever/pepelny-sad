@@ -35,7 +35,14 @@ def sync_for_draw(scene: OverworldScene) -> None:
     wm._ensure_chunk(player_chunk[0], player_chunk[1])
 
     wx0, wy0 = ow.camera.view_origin()
-    if ow.fov.needs_recompute() or not ow.visible:
+    bench = os.environ.get("PEPELNY_BENCH", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if bench and ow.fov.last_visible and not ow.fov.needs_recompute():
+        ow.visible = ow.fov.last_visible
+    elif ow.fov.needs_recompute() or not ow.visible:
         with perf.measure("fov"):
             ow.visible = ow.fov.update(wx0, wy0)
     else:

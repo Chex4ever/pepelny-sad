@@ -58,6 +58,13 @@
     "art_id": "pepel_lantern",
     "combat_traits": {"lantern": true}
   },
+  "helm_ash": {
+    "name": "Пепельный шлем",
+    "type": "equipment",
+    "slot": "head",
+    "art_id": "helm_ash",
+    "armor": 2
+  },
   "memory_shard": {
     "name": "Осколок памяти",
     "type": "consumable",

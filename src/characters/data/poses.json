@@ -1,0 +1,18 @@
+{
+  "idle_n": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0},
+  "idle_e": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0},
+  "idle_s": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0},
+  "idle_w": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0},
+  "walk_n_0": {"leg_l_z": 0.3, "leg_r_z": -0.3, "arm_l_swing": -0.2, "arm_r_swing": 0.2, "torso_bob": 0.02},
+  "walk_n_1": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0.05},
+  "walk_n_2": {"leg_l_z": -0.3, "leg_r_z": 0.3, "arm_l_swing": 0.2, "arm_r_swing": -0.2, "torso_bob": 0.02},
+  "walk_e_0": {"leg_l_z": 0.3, "leg_r_z": -0.3, "arm_l_swing": -0.2, "arm_r_swing": 0.2, "torso_bob": 0.02},
+  "walk_e_1": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0.05},
+  "walk_e_2": {"leg_l_z": -0.3, "leg_r_z": 0.3, "arm_l_swing": 0.2, "arm_r_swing": -0.2, "torso_bob": 0.02},
+  "walk_s_0": {"leg_l_z": 0.3, "leg_r_z": -0.3, "arm_l_swing": -0.2, "arm_r_swing": 0.2, "torso_bob": 0.02},
+  "walk_s_1": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0.05},
+  "walk_s_2": {"leg_l_z": -0.3, "leg_r_z": 0.3, "arm_l_swing": 0.2, "arm_r_swing": -0.2, "torso_bob": 0.02},
+  "walk_w_0": {"leg_l_z": 0.3, "leg_r_z": -0.3, "arm_l_swing": -0.2, "arm_r_swing": 0.2, "torso_bob": 0.02},
+  "walk_w_1": {"leg_l_z": 0, "leg_r_z": 0, "arm_l_swing": 0, "arm_r_swing": 0, "torso_bob": 0.05},
+  "walk_w_2": {"leg_l_z": -0.3, "leg_r_z": 0.3, "arm_l_swing": 0.2, "arm_r_swing": -0.2, "torso_bob": 0.02}
+}

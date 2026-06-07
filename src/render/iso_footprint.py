@@ -108,6 +108,76 @@ def internal_footprint_holes(covered: set[tuple[int, int]]) -> list[tuple[int, i
     return holes
 
 
+def iso_footprint_geom_pixel_rect(
+    anchor_cx: int,
+    anchor_cy: int,
+    *,
+    step_x: int = ISO_STEP_X,
+    step_y: int = ISO_STEP_Y,
+) -> tuple[float, float, float, float]:
+    """Footprint AABB used by GPU diamond geom (matches iso_renderer _diamond_geom)."""
+    x0 = float((anchor_cx - step_x) * CELL_W)
+    y0 = float((anchor_cy - step_y) * CELL_H)
+    x1 = float((anchor_cx + step_x + 1) * CELL_W)
+    y1 = float((anchor_cy + 2 * step_y + 1) * CELL_H)
+    return x0, y0, x1, y1
+
+
+def iso_footprint_bbox_size(
+    *,
+    step_x: int = ISO_STEP_X,
+    step_y: int = ISO_STEP_Y,
+) -> tuple[float, float]:
+    """Width/height of iso_footprint_geom_pixel_rect (for GPU footprint AABB detection)."""
+    return float((2 * step_x + 1) * CELL_W), float((3 * step_y + 1) * CELL_H)
+
+
+def pixel_inside_iso_diamond(
+    px: float,
+    py: float,
+    bounds_x0: float,
+    bounds_y0: float,
+    *,
+    step_x: int = ISO_STEP_X,
+    step_y: int = ISO_STEP_Y,
+) -> bool:
+    """Same iso bound test as GPU inside_iso_diamond (pixel center coordinates)."""
+    half_w = float(step_x * CELL_W)
+    mid_h = float(step_y * CELL_H)
+    tip_x = bounds_x0 + half_w
+    tip_y = bounds_y0 + mid_h
+    dx = px - tip_x
+    dy = py - tip_y
+    ax = abs(dx)
+    if dy >= 0.0:
+        return ax / half_w + dy / (2.0 * mid_h) <= 1.001
+    return ax / half_w + (-dy) / mid_h <= 1.001
+
+
+def footprint_bbox_ear_cells(
+    anchor_cx: int,
+    anchor_cy: int,
+    *,
+    step_x: int = ISO_STEP_X,
+    step_y: int = ISO_STEP_Y,
+) -> list[tuple[int, int]]:
+    """Char cells inside footprint AABB but outside the iso diamond (AABB corner ears)."""
+    x0, y0, x1, y1 = iso_footprint_pixel_rect(
+        anchor_cx, anchor_cy, step_x=step_x, step_y=step_y
+    )
+    diamond = set(iso_footprint_cells(anchor_cx, anchor_cy, step_x=step_x, step_y=step_y))
+    cx_lo = int(x0 // CELL_W)
+    cy_lo = int(y0 // CELL_H)
+    cx_hi = int((x1 - 1) // CELL_W)
+    cy_hi = int((y1 - 1) // CELL_H)
+    ears: list[tuple[int, int]] = []
+    for cx in range(cx_lo, cx_hi + 1):
+        for cy in range(cy_lo, cy_hi + 1):
+            if (cx, cy) not in diamond:
+                ears.append((cx, cy))
+    return ears
+
+
 def footprint_coverage_gaps(
     anchors: list[tuple[int, int]],
     *,

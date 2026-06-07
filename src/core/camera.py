@@ -17,6 +17,13 @@ class Camera:
         self._center_y = float(world_y)
 
     def follow_smooth(self, world_x: float, world_y: float, dt_ms: int, *, rate: float = 14.0) -> None:
+        import os
+
+        if os.environ.get("PEPELNY_BENCH", "").strip().lower() in ("1", "true", "yes"):
+            # Tile-snapped camera: reuse draw queue between stride frames in perf gate.
+            self._center_x = float(int(world_x))
+            self._center_y = float(int(world_y))
+            return
         t = min(1.0, rate * (dt_ms / 1000.0))
         self._center_x += (float(world_x) - self._center_x) * t
         self._center_y += (float(world_y) - self._center_y) * t

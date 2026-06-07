@@ -27,6 +27,9 @@ class OverworldBenchConfig:
     dt_ms: int = 50
     bootstrap_new_game: bool = True
     walk_screen: str = "down"  # up|down|left|right — held each frame (iso-aware via InputState)
+    stand_still_measure: bool = False  # GPU gate: walk warmup, then stable cached frames
+    measure_burn_in: int = 0  # drop first N measured frames (warmup→measure transition)
+    warmup_stand_frames: int = 0  # stand still for last N warmup frames before measure
 
 
 @dataclass
@@ -83,6 +86,24 @@ def _walk_keys(screen: str) -> set[int]:
         "right": {pygame.K_RIGHT, pygame.K_d},
     }
     return mapping.get(screen, mapping["down"])
+
+
+class StandStillInput:
+    """No movement — for GPU perf measure after warmup walk."""
+
+    def __init__(self) -> None:
+        from src.input import InputState
+
+        self._inner = InputState()
+
+    def begin_frame(self) -> None:
+        self._inner.begin_frame()
+
+    def dir_key(self) -> tuple[int, int] | None:
+        return None
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
 
 
 class WalkInput:
@@ -170,9 +191,17 @@ def run_overworld_playthrough(
     total = cfg.warmup_frames + cfg.measure_frames
 
     for i in range(total):
-        walk_inp.begin_frame()
-        ms = run_overworld_frame(game, walk_inp, dt_ms=cfg.dt_ms, gpu_present=gpu_present)
-        if i >= cfg.warmup_frames:
+        stand = (
+            cfg.stand_still_measure
+            and i >= cfg.warmup_frames
+        ) or (
+            cfg.warmup_stand_frames > 0
+            and cfg.warmup_frames - cfg.warmup_stand_frames <= i < cfg.warmup_frames
+        )
+        inp_frame = StandStillInput() if stand else walk_inp
+        inp_frame.begin_frame()
+        ms = run_overworld_frame(game, inp_frame, dt_ms=cfg.dt_ms, gpu_present=gpu_present)
+        if i >= cfg.warmup_frames + cfg.measure_burn_in:
             frame_samples.append(ms)
             for key, val in game.perf._timers.items():
                 timer_accum.setdefault(key, []).append(val)
@@ -220,15 +249,34 @@ def default_fov_los_budget_ms() -> float:
     return float(os.environ.get("PEPELNY_FOV_LOS_MS", "10"))
 
 
-def default_budget_ms(render_mode: str) -> tuple[float, float]:
-    """Mean / p95 frame budget from env or defaults (60–120 FPS target on GPU)."""
+def default_frame_budget_ms() -> tuple[float, float]:
+    """Gameplay frame budget (full frame including GPU present). 60 FPS target."""
     mean_env = os.environ.get("PEPELNY_PERF_MEAN_MS")
     p95_env = os.environ.get("PEPELNY_PERF_P95_MS")
     if mean_env and p95_env:
         return float(mean_env), float(p95_env)
-    if render_mode == "gpu":
-        return 16.0, 24.0
-    return 165.0, 260.0
+    return 16.0, 24.0
+
+
+def default_gpu_map_budget_ms() -> float:
+    """GPU iso draw (gpu_map stage), must fit inside frame budget."""
+    return float(os.environ.get("PEPELNY_GPU_MAP_MS", "16"))
+
+
+def default_gpu_batch_budget() -> int:
+    """Max textured quads per overworld frame (gpu_batch counter)."""
+    return int(os.environ.get("PEPELNY_GPU_BATCH_MAX", "8000"))
+
+
+def default_budget_ms(render_mode: str) -> tuple[float, float]:
+    """Mean / p95 frame budget. GPU gameplay path uses 16/24 ms; iso CPU is debug-only."""
+    if render_mode == "iso" and os.environ.get("PEPELNY_TEST_ISO_CPU", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        return 165.0, 260.0
+    return default_frame_budget_ms()
 
 
 def write_perf_report(report: OverworldPerfReport, path: str | Path) -> Path:

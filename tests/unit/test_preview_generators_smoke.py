@@ -119,6 +119,36 @@ def test_biome_viewer_export_all_writes_artifacts(preview_env, biome_viewer, tmp
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(
+    not __import__("src.render.gpu.context", fromlist=["gl_available"]).gl_available(),
+    reason="No OpenGL",
+)
+def test_biome_viewer_export_all_gpu(preview_env, biome_viewer, tmp_path, monkeypatch):
+    """GPU export path (default in biome_viewer) must match iso geometry report."""
+    monkeypatch.delenv("SDL_VIDEODRIVER", raising=False)
+    monkeypatch.delenv("SDL_AUDIODRIVER", raising=False)
+    monkeypatch.setenv("PEPELNY_RENDER", "gpu")
+    monkeypatch.setenv("PEPELNY_GPU_SPLAT", "1")
+
+    import pygame
+
+    if pygame.get_init():
+        pygame.display.quit()
+        pygame.quit()
+
+    from src.data.art_loader import load_biomes
+
+    out = tmp_path / "gpu_export"
+    code = biome_viewer.run_export_all(str(out), seed=4242, size=8, render_mode="gpu")
+    assert code == 0
+    data = json.loads((out / "report_s4242.json").read_text(encoding="utf-8"))
+    assert data["render_path"] == "gpu"
+    assert set(data["biomes"]) == set(load_biomes().keys())
+    for bid in load_biomes():
+        assert list(out.glob(f"biome_{bid}_*_gpu.png")), f"missing gpu png for {bid}"
+
+
+@pytest.mark.unit
 def test_prepare_patch_does_not_break_gpu_context(monkeypatch):
     from src.constants import init_paths, COLOR_BG
 
@@ -272,6 +302,17 @@ def test_parallel_chunk_generate_smoke(preview_env):
 
 
 @pytest.mark.unit
+def test_iso_footprint_cells_nonempty(preview_env):
+    from src.render.iso_footprint import iso_footprint_cells
+    from src.render.iso_projector import IsoProjector
+
+    projector = IsoProjector()
+    ax, ay = projector.world_to_screen(10, 10, focus_wx=10, focus_wy=10)
+    cells = iso_footprint_cells(ax, ay)
+    assert len(cells) >= 8
+
+
+@pytest.mark.unit
 def test_meadow_preview_prepare_patch_smoke(preview_env, biome_viewer):
     _chunk, queue, stats, _holes = biome_viewer.prepare_patch(
         0,
@@ -296,6 +337,31 @@ def test_tree_viewer_module_imports(preview_env):
 
     solids = build_tree_solids(roll_tree_params(load_biomes()["meadow"], 42, 0, 0))
     assert len(solids) >= 2
+
+
+@pytest.mark.unit
+def test_test_2x1_dia_export_smoke(preview_env, tmp_path):
+    env = os.environ.copy()
+    env["SDL_VIDEODRIVER"] = "dummy"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "test_2x1_dia.py"),
+            "--export",
+            "--seed",
+            "3",
+            "--nx",
+            "6",
+            "--ny",
+            "6",
+        ],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
 
 
 @pytest.mark.unit
@@ -439,6 +505,18 @@ def test_gpu_player_sprite_not_upside_down(monkeypatch):
                 foot_y = y0
         assert head_y is not None and foot_y is not None
         assert head_y < foot_y, f"head y={head_y} should be above foot y={foot_y}"
+        for i in range(0, len(data), stride):
+            x0 = struct.unpack("f", data[i : i + 4])[0]
+            y0 = struct.unpack("f", data[i + 4 : i + 8])[0]
+            u0, v_top, _u1, v_bot = struct.unpack(
+                "4f", data[i + stride - 16 : i + stride]
+            )
+            if u0 < -0.5:
+                continue
+            cx = int(x0 // 10)
+            cy = int(y0 // 16)
+            if (cx, cy) == (50 + head.dx, 30 + head.dy):
+                assert v_top > v_bot, f"head glyph UV flipped: {v_top} vs {v_bot}"
     finally:
         preview.release()
         pygame.quit()
@@ -544,6 +622,18 @@ def test_gpu_player_sprite_not_upside_down(monkeypatch):
                 foot_y = y0
         assert head_y is not None and foot_y is not None
         assert head_y < foot_y, f"head y={head_y} should be above foot y={foot_y}"
+        for i in range(0, len(data), stride):
+            x0 = struct.unpack("f", data[i : i + 4])[0]
+            y0 = struct.unpack("f", data[i + 4 : i + 8])[0]
+            u0, v_top, _u1, v_bot = struct.unpack(
+                "4f", data[i + stride - 16 : i + stride]
+            )
+            if u0 < -0.5:
+                continue
+            cx = int(x0 // 10)
+            cy = int(y0 // 16)
+            if (cx, cy) == (50 + head.dx, 30 + head.dy):
+                assert v_top > v_bot, f"head glyph UV flipped: {v_top} vs {v_bot}"
     finally:
         preview.release()
         pygame.quit()

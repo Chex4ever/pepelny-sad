@@ -33,6 +33,16 @@ ISO_MAP_BOTTOM_Y = SCREEN_H - STATUS_STRIP_H - 1
 ISO_ORIGIN_Y = (ISO_SKY_ROWS + ISO_MAP_BOTTOM_Y) // 2
 # LOS radius for live visibility (fog + draw); explored map is persistent (no r=100 LOS).
 VISIBLE_LOS_RADIUS_SURFACE = 32
+
+
+def visible_los_radius_surface() -> int:
+    """PEPELNY_VISIBLE_LOS overrides surface LOS radius (perf tuning)."""
+    import os
+
+    raw = os.environ.get("PEPELNY_VISIBLE_LOS", "").strip()
+    if raw:
+        return max(12, int(raw))
+    return VISIBLE_LOS_RADIUS_SURFACE
 # Legacy name kept for tests/docs comparing old raycast budget at r=100.
 SURFACE_FOV_RADIUS_TILES = 100
 # Smooth locomotion (tiles per second between grid cells).
@@ -42,8 +52,51 @@ INPUT_REPEAT_INITIAL_MS = 120
 INPUT_REPEAT_MS = 80
 ISO_TILE_PIXEL_W = ISO_STEP_X * CELL_W
 ISO_TILE_PIXEL_H = ISO_STEP_Y * CELL_H
-ISO_Z_CHARS_PER_M = 1
-TILE_METERS = 1.0
+# World AABB margin when building iso draw queue (tiles beyond viewport).
+ISO_QUEUE_WORLD_MARGIN = 2
+TREE_LOD_DISTANCE_TILES = 8
+
+
+def iso_queue_world_margin() -> int:
+    """PEPELNY_ISO_MARGIN overrides default queue cull margin."""
+    import os
+
+    raw = os.environ.get("PEPELNY_ISO_MARGIN", "").strip()
+    if raw:
+        return max(1, int(raw))
+    return ISO_QUEUE_WORLD_MARGIN
+
+
+def tree_lod_distance_tiles() -> int:
+    """PEPELNY_TREE_LOD overrides far-tree cheap stencil distance."""
+    import os
+
+    raw = os.environ.get("PEPELNY_TREE_LOD", "").strip()
+    if raw:
+        return max(4, int(raw))
+    return TREE_LOD_DISTANCE_TILES
+
+
+def apply_quality_preset() -> None:
+    """Map PEPELNY_QUALITY=low|medium|high to perf-related env defaults."""
+    import os
+
+    q = os.environ.get("PEPELNY_QUALITY", "").strip().lower()
+    presets = {
+        "low": {"PEPELNY_ISO_MARGIN": "2", "PEPELNY_TREE_LOD": "6"},
+        "medium": {"PEPELNY_ISO_MARGIN": "3", "PEPELNY_TREE_LOD": "8"},
+        "high": {"PEPELNY_ISO_MARGIN": "4", "PEPELNY_TREE_LOD": "10"},
+    }
+    for key, val in presets.get(q, {}).items():
+        os.environ.setdefault(key, val)
+# Iso-square 2a stamp (@@_/_@@) and anisotropic tile scale (1 m).
+STAMP_PREVIEW = ("@@_", "_@@")
+TILES_PER_M_XY = 5
+TILES_PER_M_Z = 10
+TILE_XY_M = 1.0 / TILES_PER_M_XY
+TILE_Z_M = 1.0 / TILES_PER_M_Z
+ISO_Z_CHARS_PER_M = TILES_PER_M_Z
+TILE_METERS = TILE_XY_M
 DEFAULT_PLAYER_HEIGHT_M = 1.8
 ENTITY_DRAW_Z_M = DEFAULT_PLAYER_HEIGHT_M * 0.55
 
@@ -75,5 +128,7 @@ AUDIO_DIR = None  # set at runtime
 def init_paths(base_path):
     global DATA_DIR, AUDIO_DIR
     import os
+
+    apply_quality_preset()
     DATA_DIR = os.path.join(base_path, "src", "data")
     AUDIO_DIR = os.path.join(base_path, "assets", "audio")

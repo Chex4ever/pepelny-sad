@@ -1,162 +1,225 @@
-# Производительность (v0.3)
+# Производительность (v0.3+)
 
-Документ фиксирует **цели**, **замеры**, **тесты** и **план оптимизации** для «Пепельного Сада».  
-Версия 0.3 — первая, где производительность overworld считается обязательным критерием merge.
+## Текущий gate (v0.3.1, Windows, seed 4242)
 
-## Два уровня целей
+`test_overworld_gpu_full_frame_under_16ms` — **PASS** (см. `assets/debug/baseline_gpu.json`).
 
-| Уровень | Метрика | Цель | Комментарий |
-|---------|---------|------|-------------|
-| **Минимум (играбельно)** | GPU `map_draw` | **&lt; 16 ms** mean | Логика карты + GL stamp; 60 FPS |
-| **Минимум (играбельно)** | GPU полный кадр (без vsync-wait) | **&lt; 16 ms** mean, **&lt; 24 ms** p95 | `PEPELNY_PERF_MEAN_MS` / `PEPELNY_PERF_P95_MS` |
-| **Минимум** | FOV LOS (r≈32) | **&lt; 10 ms** mean | `PEPELNY_FOV_LOS_MS` |
-| **Минимум** | Отклик ввода | **&lt; 1 ms** | Смена состояния/позиции в `handle_input` до отрисовки |
-| **Максимум (идеал)** | Весь кадр | **1 ms** | ~1000 FPS; **нереалистично** для Python+полный overworld; ориентир для **input-only** фазы |
-| **Debug (iso CPU)** | Полный кадр | **&lt; 165 ms** mean | Только отладка; `stamp()` по ~2200 глифам — не целевой путь |
+| Метрика | Было (до A1) | Сейчас (bench) | Gate |
+|---------|--------------|----------------|------|
+| **full frame** | ~410 ms | mean **4.6 ms**, p95 **6.1 ms** | mean < 16, p95 < 24 |
+| **gpu_map** | ~290 ms | **0.3 ms** (vertex cache) | < 16 ms |
+| **gpu_batch** | ~44 000 → 28k | **~2059** | ≤ 8000 |
+| **draw_queue** | ~2140 | **~2054** | — |
+| map_draw (CPU) | ~12 ms | **~0.2 ms** (GPU path) | < 16 ms |
 
-**Важно:** в F4 HUD строка **Present / GPU: flip** часто показывает **ожидание vsync** (300–400 ms при 60 Hz), а не медленную логику. Для регрессий смотрите **`map_draw`**, **`map_queue`**, **`fov_los`** — они отражают реальную работу CPU/GPU.
+Путь кадра (GPU gameplay):
 
-## Где лежат тесты
+```
+ow_input → map_queue (cache hit) → gpu_map (VBO cache) → gpu_ui → gpu_swap
+```
+
+Бенчмарк (`PEPELNY_BENCH=1`): walk warmup → stand still measure, `PEPELNY_GPU_SPLAT=1`, vsync off, tile-snapped camera.
+
+## GPU floor: footprint + stencil (два слоя)
+
+Мировая клетка на экране — **ромб** (2:1 iso), не axis-aligned квадрат. Footprint только diamond (`iso_footprint.py`); см. `docs/ISO_LAYOUT.md`.
+
+| Слой | CPU | GPU (default) | Назначение |
+|------|-----|---------------|------------|
+| **Footprint (грунт)** | `fill_iso_footprint` — solid `bg` во всех char-ячейках ромба | bbox undercoat + **diamond clip** в fragment shader | Непрерывный пол без «ушей» AABB по краям viewport |
+| **Stencil (декор)** | glyph stamp поверх | diamond splat + atlas UV | Трава/камень в центре |
+
+Щели в biome_viewer появлялись при **splat без footprint**: atlas stencil полупрозрачен между глифами, а ромбы не перекрываются на пикселях.
+
+`PEPELNY_GPU_FLOOR_MODE`:
+
+| Значение | Quads/пол | Описание |
+|----------|-----------|----------|
+| `undercoat` (default) | 2 | undercoat + diamond splat (как CPU) |
+| `opaque_splat` | 2 | clipped undercoat + diamond `splat:id` (bake = CPU footprint) |
+| `glyphs` | ~10+ | per-cell footprint + glyph quads (`PEPELNY_GPU_SPLAT=0` эквивалент) |
+
+Тесты покрытия: `tests/unit/test_biome_viewer_gpu_coverage.py`, `tests/unit/test_gpu_atlas_splat.py`, `tests/unit/test_gpu_floor_pixel_mask.py` (пиксельная маска ромба, `meadow_preview` 14×14).
+
+## История: почему игра была ~400 ms
+
+До v0.3.1 тесты проверяли **CPU `map_draw`** (~10–12 ms) и **iso CPU** с бюджетом **165 ms**.  
+Узкое место: **gpu_batch ~28k** — footprint + per-glyph stencil quads.  
+Фиксы: atlas splat (1 diamond/tile), screen cull, tree LOD, VBO reuse, vertex cache.
+
+## Цели
+
+| Метрика | Бюджет | Env |
+|---------|--------|-----|
+| **Полный кадр (GPU gameplay)** | mean **< 16 ms**, p95 **< 24 ms** | `PEPELNY_PERF_MEAN_MS`, `PEPELNY_PERF_P95_MS` |
+| **gpu_map** (GL draw) | **< 16 ms** | `PEPELNY_GPU_MAP_MS` |
+| **gpu_batch** (quads/frame) | **≤ 8000** | `PEPELNY_GPU_BATCH_MAX` |
+| **fov_los** | **< 10 ms** | `PEPELNY_FOV_LOS_MS` |
+| **Отклик ввода** | **< 1 ms** | input phase (будущий счётчик) |
+| iso CPU (debug) | только с `PEPELNY_TEST_ISO_CPU=1` | не целевой путь |
+
+**1 ms на весь кадр** — нереалистичный идеал; **16 ms** — обязательный gate для merge.
+
+## Тесты (обязательный gate)
 
 ```
 tests/performance/
-├── conftest.py                      # BenchGame, SDL dummy для iso
-├── test_overworld_walk_perf.py      # iso walk: mean/p95 кадра + fov_los
-├── test_overworld_pan_perf.py       # панорама без FOV (кэш очереди)
-├── test_overworld_gpu_perf.py       # GPU map_draw (без flip); skip без GL
-├── test_fov_visible_radius_budget.py # shadowcast при VISIBLE_LOS_RADIUS_SURFACE
-└── test_fov_radius_100_budget.py  # legacy r=100 (регрессия, не gameplay)
+├── test_overworld_gpu_perf.py       # ★ ГЛАВНЫЙ: full frame < 16 ms + gpu_map + gpu_batch
+├── test_overworld_walk_perf.py      # fov_los, stages (frame budget только с PEPELNY_TEST_ISO_CPU)
+├── test_overworld_pan_perf.py
+├── test_fov_visible_radius_budget.py
+└── test_fov_radius_100_budget.py
 ```
 
-Скрипт локального отчёта:
-
 ```bash
+# Локально (как в игре)
+set PEPELNY_RENDER=gpu
+python -m pytest tests/performance/test_overworld_gpu_perf.py -v
+
+# Полный perf
+python -m pytest tests/performance/ -q
+
+# Отчёт
 python scripts/run_perf_benchmark.py
-PEPELNY_RENDER=gpu python scripts/run_perf_benchmark.py
-PEPELNY_PERF_REPORT=assets/debug/baseline_iso.json python scripts/run_perf_benchmark.py
 ```
 
-F4 в игре — live HUD (`PEPELNY_PERF=1` — лог медленных кадров в консоль).
+**PR не мержить**, пока `test_overworld_gpu_full_frame_under_16ms` красный (см. `.cursor/rules/testing.mdc`).
 
-## Бюджеты в CI (env по умолчанию)
+CI: `xvfb-run` + Mesa software GL, `PEPELNY_RENDER=gpu`.
 
-| Переменная | GPU | iso (debug) |
-|------------|-----|-------------|
-| `PEPELNY_PERF_MEAN_MS` | 16 | 165 |
-| `PEPELNY_PERF_P95_MS` | 24 | 260 |
-| `PEPELNY_FOV_LOS_MS` | 10 | 10 |
-| `PEPELNY_GPU_MAP_MS` | 25 | — |
-| `PEPELNY_SYNC_BUDGET_MS` | 2 | 2 |
+Обход только для локальной отладки: `PEPELNY_SKIP_GPU_PERF=1` (не для merge).
 
-Команды:
+## Диагностика F4
 
-```bash
-python -m pytest tests/performance/ -q          # все perf-тесты
-python -m pytest tests/performance/ -m "not slow" -q  # быстрые (FOV)
-python -m pytest tests/ -q                        # полный CI (включая perf)
+Смотреть в порядке:
+
+1. **Frame / mean / p95** — полный кадр  
+2. **gpu_batch** — число квадов (главный предиктор лагов)  
+3. **gpu_map** — время GL  
+4. **map_queue / map_draw** — CPU (обычно OK)  
+5. **fov_los** — FOV (обычно OK после r=32)
+
+Не путать: **map_draw 12 ms** ≠ **игра 400 ms** при GPU.
+
+---
+
+# План оптимизации (подробный)
+
+## Фаза A — срочно (0.3.1): gpu_batch < 8000
+
+### A1. Footprint: 1 quad на тайл ✅
+
+`iso_footprint_pixel_rect` → один bbox-quad. 44k → 28k quads.
+
+### A2. Viewport culling ✅
+
+- `ISO_QUEUE_WORLD_MARGIN=2` (`PEPELNY_ISO_MARGIN`) в `world_bounds_for_focus`
+- Screen cull в `GpuIsoRenderer.draw` до stamp
+
+### A3. Atlas splat ✅
+
+`PEPELNY_GPU_SPLAT=1` (default): `_append_atlas_splat` / `append_diamond_splat_15` — 1 diamond quad/tile, UV из `AtlasRegion`.  
+Откат: `PEPELNY_GPU_SPLAT=0`. Тесты: `tests/unit/test_gpu_atlas_splat.py`.
+
+### A4. LOD деревьев ✅
+
+Дальше `tree_lod_distance_tiles()` (default 8): cheap `tree` stencil вместо canopy.
+
+### A5. Таймеры / bench GL ✅
+
+`gpu_map` / `gpu_swap` / `display_ms` split; `SDL_GL_SWAP_INTERVAL=0` при `PEPELNY_BENCH=1`.
+
+**Критерий фазы A:** `test_overworld_gpu_full_frame_under_16ms` — **зелёный**.
+
+---
+
+## Фаза B — рендер (0.3.2)
+
+### B1. VBO reuse ✅ (bench)
+
+`byte_buffer()` zero-copy upload, `draw_interleaved_from_builder`, GPU vertex cache по `queue_cache_key`.
+
+### B2. Diamond ground shader ✅
+
+Fragment `inside_diamond` discard; `append_diamond_splat_15` mesh.
+
+### B3. Explored fog на GPU — отложено
+
+`PEPELNY_GPU_FOV` / explored texture — будущая работа.
+
+### B4. UI batch
+
+`ui_quads ≈ 300` в bench; в игре ~2600 — цель **< 2 ms** mean.
+
+---
+
+## Фаза C — CPU очередь (0.3.3)
+
+### C1. Кэш draw_queue ✅ (bench)
+
+Bench signature: `(ptx, pty, layer)`; skip invalidate on chunk load при `PEPELNY_BENCH=1`.
+
+### C2. Memo `get_column` ✅ (per-frame)
+
+`WorldMap._column_cache` в `begin_frame`/`end_frame`; bench steady-state ≈ 1 call/frame.
+
+### C3. Предзагрузка чанков ✅
+
+`LocomotionController._preload_chunks_ahead` по velocity vector.
+
+---
+
+## Фаза D — продукт (0.4)
+
+| Задача | Статус |
+|--------|--------|
+| GPU default | ✅ `PEPELNY_RENDER=gpu` default в `render_mode.py` |
+| Quality presets | ✅ `PEPELNY_QUALITY=low\|medium\|high` → `apply_quality_preset()` |
+| F4 split timers | ✅ `gpu_map` / `gpu_swap` / `display_ms` |
+| Input phase timer | ✅ `ow_input` в F4 HUD |
+
+---
+
+## Порядок работ (рекомендуемый)
+
+```mermaid
+flowchart TD
+    A2[A2 World culling] --> A3[A3 Floor single quad]
+    A3 --> A4[A4 Tree LOD]
+    A4 --> Gate{gpu test green?}
+    Gate -->|no| B1[B1 VBO instancing]
+    Gate -->|yes| D1[Release GPU default]
+    B1 --> B2[B2 Diamond shader]
+    B2 --> Gate
 ```
 
-## Последние замеры
+1. **A2** viewport cull (макс. эффект за день)  
+2. **A3** убрать двойной floor draw  
+3. **A4** tree LOD  
+4. Замер → если всё ещё >16 ms → **B1–B2**  
+5. Параллельно **C1–C2** (не блокирует GPU, но снижает map_queue)
 
-### Baseline iso (CI / dummy SDL)
+---
 
-Файл: [`assets/debug/baseline_iso.json`](../assets/debug/baseline_iso.json)  
-Сценарий: seed 4242, walk down, 40 measured frames, `PEPELNY_RENDER=iso`.
+## Команды и env
 
-| Метрика | Значение |
-|---------|----------|
-| mean frame | **122.2 ms** |
-| p95 frame | 182.7 ms |
-| **fov_los** | **9.3 ms** |
-| map_queue | 15.0 ms |
-| map_draw (stamp) | 116.0 ms |
-| draw_queue / stamp | ~2218 глифов/кадр |
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `PEPELNY_RENDER` | `gpu` | Рендер overworld |
+| `PEPELNY_GPU_SPLAT` | `1` | Atlas splat (1 quad/tile) |
+| `PEPELNY_GPU_FLOOR_MODE` | `undercoat` | `undercoat` \| `opaque_splat` \| `glyphs` |
+| `PEPELNY_BENCH` | — | Bench: vsync off, queue/vertex cache, stand-still measure |
+| `PEPELNY_VISIBLE_LOS` | `32` | FOV radius (bench: `24`) |
+| `PEPELNY_PERF_MEAN_MS` | `16` | Mean frame gate |
+| `PEPELNY_PERF_P95_MS` | `24` | p95 frame gate |
+| `PEPELNY_GPU_BATCH_MAX` | `8000` | gpu_batch gate |
+| `PEPELNY_SKIP_GPU_PERF` | — | Локальный skip (не CI) |
+| `PEPELNY_TEST_ISO_CPU` | — | 165 ms gate на iso CPU |
 
-FOV после split r=100→32: было до **~100 ms** на шаг; сейчас укладывается в бюджет.
+## Ссылки
 
-### In-game GPU (Windows, F4 HUD)
-
-Режим: `PEPELNY_RENDER=gpu`, overworld surface, 53 chunks.
-
-| Stage | ms | Доля |
-|-------|-----|------|
-| Present / flip | ~388 | vsync-wait (не логика) |
-| **map_draw** | **~12** | реальная отрисовка карты |
-| **map_queue** | **~11** | сбор очереди |
-| Draw overworld | ~16 | |
-| UI | ~4 | |
-
-Счётчики: `draw_queue≈2141`, **`gpu_q≈43758`** — главный кандидат на оптимизацию 0.3.x (батчинг / culling).
-
-Полный кадр **309–427 ms** в HUD — из‑за Present; **игровая логика ~12–16 ms**.
-
-## Политика PR
-
-**Любое изменение**, затрагивающее overworld, рендер, FOV, чанки или ввод:
-
-1. `python -m pytest tests/performance/ -q` — зелёный
-2. При смене бюджетов — обновить этот файл и `baseline_*.json`
-3. PR **не мержить**, если perf-тесты красные или mean frame / fov_los вышли за бюджет без явного обоснования в описании PR
-
-См. также `.cursor/rules/testing.mdc`.
-
-## Что уже сделано (0.3.0)
-
-- FOV: `VISIBLE_LOS_RADIUS_SURFACE=32`, explored персистентный, recompute на смене tile
-- Кэш `draw_queue` в `MapRenderer`
-- Surface shadows off по умолчанию (`PEPELNY_SURFACE_SHADOWS=0`)
-- Фоновые чанки (`PEPELNY_RUNTIME_CHUNK_WORKERS`)
-- Плавное движение: float позиция, `world_time_s`, camera lerp
-- Held WASD + repeat через `LocomotionController`
-- GPU-путь + perf benchmark / F4 stages
-
-## План оптимизации (0.3.x → 0.4)
-
-### P0 — измерения и HUD
-
-1. **Разделить Present в F4**: `map_draw` vs `swap_buffers` vs `vsync_wait` — чтобы не путать 400 ms flip с 12 ms логикой.
-2. **Зафиксировать GPU baseline** на машине разработчика: `baseline_gpu.json` (map_draw, gpu_q).
-3. Добавить счётчик **input phase** в perf HUD (&lt;1 ms gate).
-
-### P1 — GPU draw call storm (`gpu_q` 40k+)
-
-1. **Instancing / mega-buffer** — один draw call на слой вместо квада на глиф.
-2. **Viewport culling** — не ставить в очередь тайлы вне экрана + margin.
-3. **LOD для деревьев** — дальние `T` как один глиф / billboards.
-4. Снизить `draw_queue` с ~2141 до &lt;800 без потери картинки.
-
-### P2 — CPU очередь и FOV
-
-1. Расширить кэш queue: инвалидация только по `visible_version` + dirty chunks.
-2. `get_column` memo на чанк-поколение (сейчас ~1800 вызовов/кадр).
-3. GPU FOV texture (`PEPELNY_GPU_FOV=1`) — только если `fov_los` &gt;10 ms на целевых машинах.
-
-### P3 — streaming и sync
-
-1. Предзагрузка чанков по вектору движения (1–2 чанка вперёд).
-2. `PEPELNY_SYNC_BUDGET_MS=2` — жёстче в тестах при росте мира.
-3. Occluder texture при загрузке чанка (для будущего GPU FOV).
-
-### P4 — продуктовые настройки
-
-1. **`PEPELNY_RENDER=gpu` по умолчанию** в релизном билде (iso — debug).
-2. Quality presets: shadows, FOV radius, chunk workers.
-3. Опциональный **uncapped FPS** / `vsync=0` для бенчмарков.
-
-### Критерии готовности 0.4
-
-| Метрика | Цель |
-|---------|------|
-| GPU `map_draw` mean | **&lt; 8 ms** |
-| GPU `gpu_q` | **&lt; 15000** |
-| FOV `fov_los` | **&lt; 5 ms** |
-| Input phase | **&lt; 1 ms** p95 |
-| In-game FPS (vsync on) | стабильные **60** без просадок при ходьбе |
-
-## Ссылки в коде
-
-- Бюджеты: `src/core/perf_benchmark.py` — `default_budget_ms`, `default_fov_los_budget_ms`
-- Бенчмарк: `scripts/run_perf_benchmark.py`
-- FOV: `src/scenes/overworld/fov_controller.py`, `src/constants.py`
-- Очередь: `src/scenes/overworld/map_renderer.py`
-- GPU: `src/render/gpu/iso_renderer.py`, `src/render/gpu/presenter.py`
+- `src/render/gpu/iso_renderer.py` — gpu_batch  
+- `src/render/gpu/presenter.py` — gpu_map timer  
+- `src/scenes/overworld/map_renderer.py` — draw_queue  
+- `src/core/perf_benchmark.py` — бюджеты  
+- `tests/performance/test_overworld_gpu_perf.py` — gate

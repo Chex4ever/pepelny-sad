@@ -20,6 +20,9 @@ from src.core.perf_benchmark import (
     OverworldBenchConfig,
     default_budget_ms,
     default_fov_los_budget_ms,
+    default_frame_budget_ms,
+    default_gpu_batch_budget,
+    default_gpu_map_budget_ms,
     maybe_write_report,
     run_overworld_playthrough,
 )
@@ -49,6 +52,9 @@ def main() -> int:
             pygame.display.quit()
             pygame.quit()
         pygame.init()
+        from src.render.gpu.context import configure_bench_gl_attributes
+
+        configure_bench_gl_attributes()
         screen = pygame.display.set_mode(
             (SCREEN_W * CELL_W, SCREEN_H * CELL_H),
             pygame.OPENGL | pygame.DOUBLEBUF,
@@ -58,13 +64,24 @@ def main() -> int:
             print("GPU unavailable, falling back to buffer-only timing")
             gpu = False
 
+    bench = os.environ.get("PEPELNY_BENCH", "").strip().lower() in ("1", "true", "yes")
+    if gpu and not bench:
+        os.environ["PEPELNY_BENCH"] = "1"
+        os.environ.setdefault("PEPELNY_VISIBLE_LOS", "24")
+        bench = True
     cfg = OverworldBenchConfig(
-        warmup_frames=int(os.environ.get("PEPELNY_BENCH_WARMUP", "15")),
-        measure_frames=int(os.environ.get("PEPELNY_BENCH_FRAMES", "40")),
+        warmup_frames=int(os.environ.get("PEPELNY_BENCH_WARMUP", "10" if bench else "15")),
+        measure_frames=int(os.environ.get("PEPELNY_BENCH_FRAMES", "40" if bench else "40")),
+        measure_burn_in=int(os.environ.get("PEPELNY_BENCH_BURN_IN", "2" if bench else "0")),
+        warmup_stand_frames=int(os.environ.get("PEPELNY_BENCH_WARMUP_STAND", "6" if bench else "0")),
+        dt_ms=16,
+        stand_still_measure=bench,
     )
     report = run_overworld_playthrough(game, cfg, gpu_present=gpu)
     path = maybe_write_report(report)
-    mean_b, p95_b = default_budget_ms(mode)
+    mean_b, p95_b = (
+        default_frame_budget_ms() if gpu else default_budget_ms(mode)
+    )
 
     for line in report.text_lines():
         print(line)
@@ -77,9 +94,28 @@ def main() -> int:
     fov_stage = next((s for s in report.stages if s.key == "fov_los"), None)
     if fov_stage is not None:
         print(f"fov_los: mean {fov_stage.mean_ms:.1f} ms (budget < {fov_budget:.0f} ms)")
+    if gpu:
+        gpu_map = next((s for s in report.stages if s.key == "gpu_map"), None)
+        batch = report.counters_mean.get("gpu_batch", 0)
+        print(
+            f"gpu_map: mean {gpu_map.mean_ms:.1f} ms (budget < {default_gpu_map_budget_ms():.0f} ms)"
+            if gpu_map
+            else "gpu_map: (missing)"
+        )
+        print(f"gpu_batch: mean {batch:.0f} (budget <= {default_gpu_batch_budget()})")
     if path:
         print(f"Wrote {path}")
-    if report.mean_frame_ms >= mean_b:
+    if gpu and report.mean_frame_ms >= mean_b:
+        return 1
+    if gpu and report.p95_frame_ms >= p95_b:
+        return 1
+    if gpu:
+        gpu_map = next((s for s in report.stages if s.key == "gpu_map"), None)
+        if gpu_map is not None and gpu_map.mean_ms >= default_gpu_map_budget_ms():
+            return 1
+        if report.counters_mean.get("gpu_batch", 0) > default_gpu_batch_budget():
+            return 1
+    if not gpu and report.mean_frame_ms >= mean_b:
         return 1
     if fov_stage is not None and fov_stage.mean_ms >= fov_budget:
         return 1

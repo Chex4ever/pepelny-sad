@@ -9,7 +9,8 @@ alwaysApply: true
 
 - **`python -m pytest`** — все тесты зелёные до push/merge
 - Новый или изменённый код **сопровождается тестами** — без исключений «потом добавим»
-- **`python -m pytest tests/performance/ -q`** — обязательно, если затронуты overworld, рендер, FOV, чанки, ввод или perf HUD. **PR не мержить**, если perf-тесты красные или бюджеты нарушены без явного обоснования в описании PR
+- **`python -m pytest tests/performance/ -q`** — обязательно, если затронуты overworld, рендер, FOV, чанки, ввод или perf HUD
+- **`test_overworld_gpu_full_frame_under_16ms`** — главный gate: полный кадр **< 16 ms** при `PEPELNY_RENDER=gpu` (как в игре). **PR не мержить**, пока красный; `PEPELNY_SKIP_GPU_PERF=1` только для локальной отладки, не для merge
 
 ## Четыре уровня
 

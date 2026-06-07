@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pygame
 
-from src.constants import CELL_H, CELL_W, COLOR_BG
+from src.constants import CELL_H, CELL_W, COLOR_BG, ISO_STEP_X, ISO_STEP_Y
 from src.render.gpu.font_util import ui_font
 from src.render.gpu.texture_upload import surface_rgba_bytes
 from src.render.tile_stencil import CHAR_STENCIL, load_tile_stencil
@@ -73,6 +73,16 @@ def preload_stencil_ids() -> list[str]:
     return sorted(ids)
 
 
+def opaque_splat_stencil_ids() -> list[str]:
+    """Floor stencils that get a pre-baked opaque diamond region (splat:id)."""
+    return preload_stencil_ids()
+
+
+# Local char anchor when baking splat:* — room for iso footprint diamond in slot.
+_OPAQUE_SPLAT_ANCHOR_CX = ISO_STEP_X + 3
+_OPAQUE_SPLAT_ANCHOR_CY = ISO_STEP_Y + 4
+
+
 class TileAtlas:
     """Single texture atlas; regions keyed by stencil_id."""
 
@@ -106,7 +116,23 @@ class TileAtlas:
                 self.get_region(sid)
             except Exception:
                 pass
+        self.preload_procedural_trees()
+        self.preload_opaque_floor_splats()
         self.ensure_texture()
+
+    def preload_opaque_floor_splats(self) -> None:
+        """Bake splat:id — footprint bg + glyphs opaque (1 GPU quad, no runtime undercoat)."""
+        for sid in opaque_splat_stencil_ids():
+            self.get_region(f"splat:{sid}")
+
+    def preload_procedural_trees(self) -> None:
+        """Bake parametric tree stencils once (avoid atlas work during gpu_map)."""
+        for variant in range(6):
+            for height in range(3, 11):
+                for radius in range(1, 4):
+                    self.get_region(f"tree_canopy_v{variant}_h{height}_r{radius}")
+        for sid in ("tree_trunk_slim", "tree_trunk_thick"):
+            self.get_region(sid)
 
     def get_region(self, stencil_id: str) -> AtlasRegion:
         reg = self._regions.get(stencil_id)
@@ -115,6 +141,8 @@ class TileAtlas:
         return reg
 
     def _bake(self, stencil_id: str) -> AtlasRegion:
+        if stencil_id.startswith("splat:"):
+            return self._bake_opaque_floor_splat(stencil_id[6:])
         if stencil_id.startswith("sprite:"):
             from src.render.tile_stencil import load_sprite
 
@@ -146,6 +174,56 @@ class TileAtlas:
         v_bottom = 1.0 - (oy + ph) / self._size
         reg = AtlasRegion(u0, v_bottom, u1, v_top, min_dx, min_dy, pw, ph)
         self._regions[stencil_id] = reg
+        self._dirty_rects.append((ox, oy, pw, ph))
+        return reg
+
+    def _bake_opaque_floor_splat(self, base_id: str) -> AtlasRegion:
+        """Opaque iso footprint + stencil glyphs — matches CPU fill_iso_footprint + stamp."""
+        from src.render.iso_footprint import iso_footprint_cells
+
+        stencil = load_tile_stencil(base_id)
+        ax, ay = _OPAQUE_SPLAT_ANCHOR_CX, _OPAQUE_SPLAT_ANCHOR_CY
+        cells = iso_footprint_cells(ax, ay)
+        min_cx = min(c[0] for c in cells)
+        min_cy = min(c[1] for c in cells)
+        max_cx = max(c[0] for c in cells)
+        max_cy = max(c[1] for c in cells)
+        pw = (max_cx - min_cx + 1) * CELL_W
+        ph = (max_cy - min_cy + 1) * CELL_H
+
+        slot = self._next_slot
+        self._next_slot += 1
+        col = slot % self._cols
+        row = slot // self._cols
+        ox = col * self.SLOT_W + self.PAD
+        oy = row * self.SLOT_H + self.PAD
+
+        patch = pygame.Surface((pw, ph), pygame.SRCALPHA)
+        bg = (*stencil.default_bg, 255)
+        patch.fill(bg)
+        cell = pygame.Surface((CELL_W, CELL_H), pygame.SRCALPHA)
+        font = ui_font()
+        for cx, cy in cells:
+            lx = (cx - min_cx) * CELL_W
+            ly = (cy - min_cy) * CELL_H
+            cell.fill(bg)
+            patch.blit(cell, (lx, ly))
+        min_dx = min((g.dx for g in stencil.glyphs), default=0)
+        min_dy = min((g.dy for g in stencil.glyphs), default=0)
+        for g in stencil.glyphs:
+            lx = (ax + g.dx - min_cx) * CELL_W
+            ly = (ay + g.dy - min_cy) * CELL_H
+            cell.fill(bg)
+            cell.blit(font.render(g.ch, True, stencil.default_fg), (0, 0))
+            patch.blit(cell, (lx, ly))
+
+        self._sheet.blit(patch, (ox, oy))
+        u0 = ox / self._size
+        u1 = (ox + pw) / self._size
+        v_top = 1.0 - oy / self._size
+        v_bottom = 1.0 - (oy + ph) / self._size
+        reg = AtlasRegion(u0, v_bottom, u1, v_top, min_dx, min_dy, pw, ph)
+        self._regions[f"splat:{base_id}"] = reg
         self._dirty_rects.append((ox, oy, pw, ph))
         return reg
 

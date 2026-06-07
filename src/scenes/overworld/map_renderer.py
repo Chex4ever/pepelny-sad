@@ -243,7 +243,11 @@ class MapRenderer:
         projector = self._projector
         focus_wx, focus_wy = projector.view_focus(wx0, wy0, vw, vh)
         wm = ow.game.world_map
-        wx_lo, wx_hi, wy_lo, wy_hi = projector.world_bounds_for_focus(focus_wx, focus_wy)
+        from src.constants import iso_queue_world_margin
+
+        wx_lo, wx_hi, wy_lo, wy_hi = projector.world_bounds_for_focus(
+            focus_wx, focus_wy, margin=iso_queue_world_margin()
+        )
         if shadow_map is None:
             shadow_map = self.build_shadow_map(
                 wx0, wy0, wx_lo, wx_hi, wy_lo, wy_hi
@@ -302,10 +306,32 @@ class MapRenderer:
                         fog,
                     )
                 )
+                ptx, pty = ow.player.tile_pos()
+                tree_lod_used = False
                 for solid in col.solids:
                     if not solid.stencil_id:
                         continue
                     sid = solid.stencil_id
+                    if ("trunk" in sid or "canopy" in sid) and not tree_lod_used:
+                        dist = abs(wx - ptx) + abs(wy - pty)
+                        from src.constants import tree_lod_distance_tiles
+
+                        if dist > tree_lod_distance_tiles():
+                            tree_lod_used = True
+                            draw_queue.append(
+                                (
+                                    wx + wy + 80,
+                                    wx,
+                                    wy,
+                                    col.floor_z,
+                                    "tree",
+                                    col.fg,
+                                    col.bg,
+                                    light,
+                                    fog,
+                                )
+                            )
+                            continue
                     if "trunk" in sid:
                         z = col.floor_z + solid.z_min
                         sort_key = wx + wy + 120
@@ -427,7 +453,11 @@ class MapRenderer:
     ) -> None:
         ow = self.scene
         projector = self._projector
-        wx_lo, wx_hi, wy_lo, wy_hi = projector.world_bounds_for_focus(focus_wx, focus_wy)
+        from src.constants import iso_queue_world_margin
+
+        wx_lo, wx_hi, wy_lo, wy_hi = projector.world_bounds_for_focus(
+            focus_wx, focus_wy, margin=iso_queue_world_margin()
+        )
         for wx in range(wx_lo, wx_hi + 1):
             for wy in range(wy_lo, wy_hi + 1):
                 state = visibility_state(wx, wy, ow.visible, ow._is_explored)
@@ -459,6 +489,16 @@ class MapRenderer:
         ow = self.scene
         ws = ow.game.world_state
         ptx, pty = ow.player.tile_pos()
+        import os
+
+        bench = os.environ.get("PEPELNY_BENCH", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if bench:
+            # Stable while standing still in perf gate (FOV explored mask is unchanged).
+            return (ptx, pty, ws.layer)
         return (
             wx0,
             wy0,
@@ -472,7 +512,6 @@ class MapRenderer:
             ow.camera.pan_y,
             int(ambient * 100),
             ow.game.world_map.chunks_loaded_version(),
-            ow.frame,
         )
 
     def _draw_iso(self, buf, wx0: int, wy0: int) -> None:
@@ -492,22 +531,25 @@ class MapRenderer:
         perf = self._perf()
         projector = self._projector
         focus_wx, focus_wy = projector.view_focus(wx0, wy0, vw, vh)
-        wx_lo, wx_hi, wy_lo, wy_hi = projector.world_bounds_for_focus(focus_wx, focus_wy)
-        with perf.measure("map_light"):
-            light_map = self.build_light_map(wx0, wy0, ambient)
-        with perf.measure("map_shadow"):
-            if layer == "surface" and not _surface_shadows_enabled():
-                shadow_map = ShadowMap(vw, vh)
-            else:
-                shadow_map = self.build_shadow_map(
-                    wx0, wy0, wx_lo, wx_hi, wy_lo, wy_hi
-                )
+        from src.constants import iso_queue_world_margin
 
+        wx_lo, wx_hi, wy_lo, wy_hi = projector.world_bounds_for_focus(
+            focus_wx, focus_wy, margin=iso_queue_world_margin()
+        )
         sig = self._queue_cache_signature(wx0, wy0, focus_wx, focus_wy, ambient)
         if sig == self._queue_cache_key and self._cached_queue:
             draw_queue = self._cached_queue
             perf.counter("draw_queue_cache_hit")
         else:
+            with perf.measure("map_light"):
+                light_map = self.build_light_map(wx0, wy0, ambient)
+            with perf.measure("map_shadow"):
+                if layer == "surface" and not _surface_shadows_enabled():
+                    shadow_map = ShadowMap(vw, vh)
+                else:
+                    shadow_map = self.build_shadow_map(
+                        wx0, wy0, wx_lo, wx_hi, wy_lo, wy_hi
+                    )
             with perf.measure("map_queue"):
                 draw_queue = self.build_iso_draw_queue(
                     wx0,

@@ -10,7 +10,7 @@ _GPU_FALLBACK: bool = False
 def render_mode() -> str:
     global _MODE
     if _MODE is None:
-        raw = os.environ.get("PEPELNY_RENDER", "iso").strip().lower()
+        raw = os.environ.get("PEPELNY_RENDER", "gpu").strip().lower()
         _MODE = raw if raw in ("iso", "classic", "gpu") else "iso"
     return _MODE
 

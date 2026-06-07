@@ -53,9 +53,13 @@ STAGE_LABELS: dict[str, str] = {
 
     "present": "Present",
 
+    "ow_input": "Overworld input",
+
     "gpu_map": "GPU: карта",
 
     "gpu_ui": "GPU: UI буфер",
+
+    "gpu_swap": "GPU: swap",
 
     "display_ms": "GPU: flip",
 
