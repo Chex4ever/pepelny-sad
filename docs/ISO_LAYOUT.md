@@ -2,6 +2,17 @@
 
 One floor layout everywhere: **3×2 char stamps** `@@_/_@@` on a diagonal tile lattice.
 
+## World axes
+
+| Axis | Direction in world | Facing key |
+|------|-------------------|------------|
+| **+X** | east | `e` → `(1, 0)` |
+| **+Y** | south | `s` → `(0, 1)` |
+| **−Y** | north | `n` → `(0, −1)` |
+| **+Z** | up (metres) | height |
+
+Screen (pygame): **sx right**, **sy down**. Z up → sy decreases.
+
 ## Stamp (one floor tile)
 
 ```
@@ -9,83 +20,92 @@ One floor layout everywhere: **3×2 char stamps** `@@_/_@@` on a diagonal tile l
 _@@
 ```
 
-Four `@` cells = four glyph positions of this tile.
+Four `@` cells = four glyph positions. **One tile → one test letter → 4 copies** on the layout golden.
 
-- **Stamp:** `STAMP_PREVIEW = ("@@_/_@@", "_@@")` in `src/constants.py`
+- **Stamp:** `STAMP_PREVIEW = ("@@_/_@@", "_@@")`
 - **Tip:** `stamp_tip(tx, ty) = (tx − ty, tx + ty)` in tessellation char space
 - **Origin:** `stamp_origin(tx, ty) = tip − (1, 1)`
-- **Neighbors:** six shared-edge tiles via `tile_neighbors()` on `(tx, ty)` indices
+- **Neighbors:** six shared-edge tiles via `tile_neighbors()` on `(tx, ty)`
 
 ## Scale
 
 | Axis | Tiles per meter |
 |------|-----------------|
 | XY   | 5 (`TILES_PER_M_XY`) |
-| Z    | 10 (`TILES_PER_M_Z`, `ISO_Z_CHARS_PER_M`) |
+| Z    | 10 (`TILES_PER_M_Z`) |
 
-Editor floor: **5×5 tiles** = continuous **1 m × 1 m** patch in world tile coordinates, centered on the character feet.
+Editor floor: **5×5 tiles** = **1 m × 1 m** patch centered on the character feet.
 
-## What `EDITOR_FLOOR_5X5_TILE_REFERENCE` is
+## Screen projection (2:1 steps)
 
-**Layout sketch** of that 5×5 patch **as seen on screen** — ASCII diamond, **no row gaps**.
+Separate from stamp **3×2** shape. Used when drawing char coords on screen:
 
-You provided this as **раскладка**, not glyph samples (`глиф одинаковый` in game; letters mark tile positions in the test only):
+```
+su = (cx − ref_x − (cy − ref_y)) × ISO_STEP_X    # ISO_STEP_X = 2
+sv = (cx − ref_x + (cy − ref_y)) × ISO_STEP_Y    # ISO_STEP_Y = 1
+```
+
+One world/char step effects on screen (same as `IsoProjector`):
+
+| Step `(dx, dy)` | Δsu | Δsv | On screen |
+|-----------------|-----|-----|-----------|
+| **+X** `(1, 0)` | +2 | +1 | down-right |
+| **+Y** `(0, 1)` south | −2 | +1 | down-left |
+| **−Y** `(0, −1)` north | +2 | −1 | up-right |
+| **−X** `(-1, 0)` | −2 | −1 | up-left |
+
+```
+              −Y (north)
+                 ↗
+                /
+    −X ←-------●------→ +X
+                \
+                 ↘
+              +Y (south)
+```
+
+**2:1** = horizontal screen step is **twice** the vertical step along these axes (`ISO_STEP_X : ISO_STEP_Y = 2 : 1`).
+
+## Two tests — do not confuse them
+
+| Test | What it checks | Golden |
+|------|----------------|--------|
+| **Layout packed** | Stamp `@` positions packed to ASCII (labels only) | `EDITOR_FLOOR_5X5_TILE_REFERENCE` (19×10, 25×4 letters) |
+| **Editor iso screen** | What `character_editor` draws: span-filled iso cells, **no row gaps** | `assert_floor_has_no_holes()` + `floor_iso_draw_map()` |
+
+The layout golden is **not** a screenshot of grass. The editor test verifies **continuous floor** on iso screen (row spans filled between projected `@` cells).
+
+### Layout golden rules
+
+1. 25 tiles → 25 letters (`a`…`y`), each **4 times** (100 chars).
+2. `aa` on one row = two `@` of the **same** tile side by side.
+3. `_` = padding; no row gaps inside the diamond.
+
+Example:
 
 ```
 ____kk_____________
 ___ggkkpp__________
-...
 aabbeehhmmqquuwwyy_
 ```
 
-| Rule | Meaning |
-|------|---------|
-| 25 tiles | 25 different letters (`a`…`y` in the golden) |
-| 4 copies each | **100** non-`_` chars = one letter per `@` cell of that tile’s 3×2 stamp |
-| `aa`, `kk` on a row | Two `@` cells of the **same** tile adjacent on that ASCII row — not “one wide cell” |
-| `_` | Padding outside the diamond |
-| 19×10 | Bounding box of the packed sketch |
-
-Golden: `EDITOR_FLOOR_5X5_TILE_REFERENCE`. Placement: `compute_tile_slot_view()`. Labels: `TILE_SLOT_DISPLAY` (one letter per `(tx, ty)` on each visible `@`).
-
-Runtime editor draw uses grass on iso footprints — the alphabet sketch is a **layout test**, not a grass screenshot.
-
-### 3×2 stamp vs screen projection (2:1 steps)
-
-Do not mix these:
-
-| | **3×2 stamp** | **2:1 steps** (`ISO_STEP_X=2`, `ISO_STEP_Y=1`) |
-|---|---------------|--------------------------------------------------|
-| What | Size/shape of **one tile** in char cells | How char coords map to **screen** when pygame draws (`IsoProjector`, `floor_screen_offset`) |
-| Used for | Tessellation, adjacency, layout golden | Runtime rendering only |
-
-The layout golden is defined by stamp geometry and screen placement rules — not by reading the 2:1 formula off the ASCII.
-
 ## Orientation test — 2×2 patch
 
-Smaller golden for **stamp slot order**: all **16** `@` slots, **one** letter each (four distinct letters per tile). Do not reuse 5×5 rules here.
-
-Golden: `EDITOR_FLOOR_2X2_ORIENTATION_REFERENCE` (`render_orientation_packed_sketch`).
-
-```
-_ef____
-abhgmn_
-_dcijpo
-____lk_
-```
+All **16** `@` slots, one letter each. Golden: `EDITOR_FLOOR_2X2_ORIENTATION_REFERENCE`. Separate rules from 5×5.
 
 ## Walking vs tessellation
 
 | | Directions | Coordinates |
 |---|------------|-------------|
-| **Tessellation** | 6 neighbors | `(tx, ty)` tile indices |
-| **Overworld walk** | 4 screen-aligned steps (↑↓←→ → world diagonals) | `(wx, wy)` via `IsoProjector.screen_delta_to_world` |
+| **Tessellation** | 6 neighbors | `(tx, ty)` |
+| **Overworld walk** | 4 screen steps (↑↓←→) | `(wx, wy)` via `IsoProjector.screen_delta_to_world` |
 
-Six tessellation neighbors describe **which floor tiles touch**. Four walk directions match **keyboard / screen** in the overworld. Editor floor movement may later align to 6 tessellation steps — separate design choice.
+## Code map
 
-## References
-
-- 2×2 tessellation char union: `DIAG_2X2_SKETCH` in `tessellation.py`
-- 5×5 layout sketch: `EDITOR_FLOOR_5X5_TILE_REFERENCE`
-- 2×2 orientation sketch: `EDITOR_FLOOR_2X2_ORIENTATION_REFERENCE`
-- Character editor: `docs/CHARACTER_EDITOR.md`
+| Module | Role |
+|--------|------|
+| `editor_floor.py` | Stamp patch, iso draw map, hole checks |
+| `editor_floor_test_tiles.py` | Layout golden + `render_packed_test_floor()` |
+| `iso_character_renderer.py` | Draws `floor_iso_draw_map()` in editor |
+| `tests/unit/test_editor_floor_iso.py` | Iso screen + packed golden |
+| `tests/unit/test_editor_floor_tile_reference.py` | Layout golden char-by-char |
