@@ -1,4 +1,4 @@
-"""CPU char-grid renderer with camera rotation and fixed-window presets."""
+"""CPU renderer with camera rotation and fixed-window presets (diag iso stamp storage)."""
 from __future__ import annotations
 
 from dataclasses import dataclass

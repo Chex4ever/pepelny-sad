@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from src.characters.editor_lighting import EditorLighting
 from src.characters.voxel_edits import VoxelEditLayer
 
 PartVisibilityMode = Literal["all", "solo", "hide"]
@@ -21,6 +22,19 @@ class EditorState:
     paint_tool: PaintTool = "add"
     voxel_edits: VoxelEditLayer = field(default_factory=VoxelEditLayer)
     settings_collapsed: bool = False
+    view_scale: int = 1
+    lighting: EditorLighting = field(default_factory=EditorLighting)
+
+    def nudge_view_scale(self, delta: int) -> None:
+        from src.render.iso_character_view import EDITOR_VIEW_SCALES
+
+        scales = EDITOR_VIEW_SCALES
+        try:
+            idx = scales.index(self.view_scale)
+        except ValueError:
+            idx = 0
+        idx = max(0, min(len(scales) - 1, idx + delta))
+        self.view_scale = scales[idx]
 
     def kind_filter(self) -> set[str] | None:
         if self.visibility_mode != "solo":

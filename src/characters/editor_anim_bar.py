@@ -7,6 +7,7 @@ from typing import Callable
 import pygame
 
 from src.characters.anim import AnimPlayer
+from src.characters.editor_fonts import TransportIcons, transport_icon_font
 from src.characters.poses import FACINGS_8
 from src.characters.tuner_ui import COLOR_ACCENT, COLOR_BTN, COLOR_BORDER, COLOR_DIM, COLOR_PANEL, COLOR_TEXT, Rect, _draw_btn
 
@@ -103,7 +104,11 @@ class EditorAnimBar:
         rect: Rect,
         font: pygame.font.Font,
         small: pygame.font.Font,
+        icon_font: pygame.font.Font | None = None,
+        icons: TransportIcons | None = None,
     ) -> None:
+        if icon_font is None or icons is None:
+            icon_font, icons = transport_icon_font(small.get_height())
         self._hits.clear()
         pygame.draw.rect(surf, COLOR_PANEL, (rect.x, rect.y, rect.w, rect.h))
         pygame.draw.line(surf, COLOR_BORDER, (rect.x, rect.y + rect.h - 1), (rect.x + rect.w, rect.y + rect.h - 1))
@@ -111,9 +116,9 @@ class EditorAnimBar:
         y = rect.y + 8
         x = rect.x + 8
 
-        pause_lbl = "▶" if anim.paused else "⏸"
+        pause_lbl = icons.play if anim.paused else icons.pause
         r_pp = Rect(x, y, 28, 24)
-        _draw_btn(surf, r_pp, pause_lbl, small, active=anim.paused)
+        _draw_btn(surf, r_pp, pause_lbl, icon_font, active=anim.paused)
         self._hits.append(HitTarget("play_pause", r_pp))
         x += 34
 
@@ -125,8 +130,8 @@ class EditorAnimBar:
 
         r_prev = Rect(x, y, 24, 24)
         r_next = Rect(x + 28, y, 24, 24)
-        _draw_btn(surf, r_prev, "◀", small)
-        _draw_btn(surf, r_next, "▶", small)
+        _draw_btn(surf, r_prev, icons.prev, icon_font)
+        _draw_btn(surf, r_next, icons.next, icon_font)
         self._hits.append(HitTarget("phase_prev", r_prev))
         self._hits.append(HitTarget("phase_next", r_next))
         phase = anim.walk_phase()

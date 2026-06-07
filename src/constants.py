@@ -89,8 +89,14 @@ def apply_quality_preset() -> None:
     }
     for key, val in presets.get(q, {}).items():
         os.environ.setdefault(key, val)
-ISO_Z_CHARS_PER_M = 1
-TILE_METERS = 1.0
+# Iso-square 2a stamp (@@_/_@@) and anisotropic tile scale (1 m).
+STAMP_PREVIEW = ("@@_", "_@@")
+TILES_PER_M_XY = 5
+TILES_PER_M_Z = 10
+TILE_XY_M = 1.0 / TILES_PER_M_XY
+TILE_Z_M = 1.0 / TILES_PER_M_Z
+ISO_Z_CHARS_PER_M = TILES_PER_M_Z
+TILE_METERS = TILE_XY_M
 DEFAULT_PLAYER_HEIGHT_M = 1.8
 ENTITY_DRAW_Z_M = DEFAULT_PLAYER_HEIGHT_M * 0.55
 

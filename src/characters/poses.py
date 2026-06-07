@@ -71,10 +71,10 @@ _WALK_CYCLE: tuple[PoseDelta, ...] = (
         torso_bob=0.04,
     ),
     PoseDelta(
-        leg_l_fwd=0.03, leg_r_fwd=0.04,
-        leg_l_lift=-0.04, leg_r_lift=0.09,
+        leg_l_fwd=0.03, leg_r_fwd=0.03,
+        leg_l_lift=-0.045, leg_r_lift=0.045,
         leg_l_z=0.0, leg_r_z=0.0,
-        arm_l_fwd=0.02, arm_r_fwd=-0.02,
+        arm_l_fwd=0.0, arm_r_fwd=0.0,
         arm_l_z=0.0, arm_r_z=0.0,
         torso_bob=0.07,
     ),

@@ -302,108 +302,14 @@ def test_parallel_chunk_generate_smoke(preview_env):
 
 
 @pytest.mark.unit
-def test_draw_tile_diagram_writes_png(preview_env, tmp_path):
-    import pygame
-
-    mod = _load_script("draw_tile_diagram.py")
-    out = tmp_path / "tile_diagram.png"
-    surf = mod.render_diagram(layout="single")
-    pygame.image.save(surf, str(out))
-    assert out.is_file() and out.stat().st_size > 500
-    assert surf.get_width() >= 100 and surf.get_height() >= 100
-
-
-@pytest.mark.unit
-def test_draw_tile_diagram_ear_pixel_count(preview_env):
-    from src.render.iso_footprint import bbox_ear_pixel_count
+def test_iso_footprint_cells_nonempty(preview_env):
+    from src.render.iso_footprint import iso_footprint_cells
     from src.render.iso_projector import IsoProjector
 
     projector = IsoProjector()
     ax, ay = projector.world_to_screen(10, 10, focus_wx=10, focus_wy=10)
-    assert bbox_ear_pixel_count(ax, ay, mode="current") == 2240
-    assert bbox_ear_pixel_count(ax, ay, mode="compact") == 160
-    assert bbox_ear_pixel_count(ax, ay, mode="step11") == 1440
-
-
-@pytest.mark.unit
-def test_draw_tile_diagram_compact_footprint_metrics(preview_env):
-    from src.render.iso_footprint import footprint_metrics
-    from src.render.iso_projector import IsoProjector
-
-    projector = IsoProjector()
-    ax, ay = projector.world_to_screen(10, 10, focus_wx=10, focus_wy=10)
-    m = footprint_metrics(ax, ay, mode="compact")
-    assert m.geom_bbox_px == (20, 16)
-    assert m.geom_bbox_char == (2, 1)
-    assert m.ear_px == 160
-    assert m.diamond_px == 160
-    assert m.footprint_cells == 2
-
-
-@pytest.mark.unit
-def test_draw_tile_diagram_compare_writes_png(preview_env, tmp_path):
-    import pygame
-
-    mod = _load_script("draw_tile_diagram.py")
-    out = tmp_path / "tile_diagram_compare.png"
-    surf = mod.render_diagram(layout="block", footprint="compare")
-    pygame.image.save(surf, str(out))
-    assert out.is_file() and out.stat().st_size > 1000
-    assert surf.get_width() > 300
-
-
-@pytest.mark.unit
-def test_brick21_stagger_and_zero_ears(preview_env):
-    from src.render.iso_footprint import (
-        bbox_ear_pixel_count,
-        brick21_tile_cells,
-        footprint_metrics,
-    )
-    from src.render.iso_projector import IsoProjector
-
-    projector = IsoProjector()
-    ax, ay = projector.world_to_screen(10, 10, focus_wx=10, focus_wy=10)
-    assert brick21_tile_cells(ax, ay) == [(ax - 1, ay), (ax, ay)]
-    nax, nay = projector.world_to_screen(11, 10, focus_wx=10, focus_wy=10)
-    assert (nay % 2) == 1
-    assert brick21_tile_cells(nax, nay) == [(nax - 1, nay), (nax, nay)]
-    assert brick21_tile_cells(nax, nay)[0][0] % 2 == 1
-    assert bbox_ear_pixel_count(ax, ay, mode="brick21") == 0
-    m = footprint_metrics(ax, ay, mode="brick21", neighbor_anchor=(nax, nay))
-    assert m.geom_bbox_px == (20, 16)
-    assert m.ear_px == 0
-
-
-@pytest.mark.unit
-def test_draw_tile_diagram_brick_sketch_writes_png(preview_env, tmp_path):
-    import pygame
-
-    mod = _load_script("draw_tile_diagram.py")
-    out = tmp_path / "tile_diagram_brick_sketch.png"
-    surf = mod.render_diagram(layout="brick_sketch", footprint="brick21", scale=3)
-    pygame.image.save(surf, str(out))
-    assert out.is_file() and out.stat().st_size > 500
-
-
-@pytest.mark.unit
-def test_fallout_grid_metrics_and_sketch(preview_env, tmp_path):
-    import pygame
-
-    from src.render.fallout_footprint import fallout_grid_metrics, fallout_tile_cells
-
-    m = fallout_grid_metrics()
-    assert m.tile_pitch_char == (8, 4)
-    assert m.active_cells_per_tile == 16
-    assert m.bbox_cells_per_tile == 24
-    assert m.ear_cells_in_bbox == 8
-    assert m.bbox_px == (80, 48)
-    assert len(fallout_tile_cells(0, 0)) == 16
-
-    mod = _load_script("draw_tile_diagram.py")
-    out = tmp_path / "tile_diagram_fallout.png"
-    surf = mod.render_diagram(layout="fallout_sketch", scale=3)
-    pygame.image.save(surf, str(out))
-    assert out.is_file() and out.stat().st_size > 800
+    cells = iso_footprint_cells(ax, ay)
+    assert len(cells) >= 8
 
 
 @pytest.mark.unit

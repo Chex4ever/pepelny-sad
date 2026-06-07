@@ -1,4 +1,4 @@
-"""Meadow floor generator for dia_scale char grid."""
+"""Meadow floor generator for diag iso stamp storage."""
 from __future__ import annotations
 
 import random
@@ -28,7 +28,7 @@ def generate_meadow(
     ny: int,
     biome: str = "meadow",
 ) -> WorldGrid:
-    """Fill horiz_brick 2a stamps with grass glyphs."""
+    """Fill diag 2a stamps with grass glyphs."""
     grid = WorldGrid(meta={"seed": seed, "nx": nx, "ny": ny, "biome": biome})
     rng = random.Random(seed ^ 0x1EAD00)
     for tx, ty, ox, oy in stamp_origins(nx, ny):

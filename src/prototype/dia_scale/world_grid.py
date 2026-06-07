@@ -1,4 +1,4 @@
-"""Sparse world-fixed char grid for dia_scale prototype."""
+"""Sparse world-fixed diag iso stamp storage for dia_scale prototype."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

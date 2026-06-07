@@ -61,7 +61,7 @@ def roll_traits(spec: CharacterSpec, race: RaceDef, tuning=None) -> TraitRoll:
                     rng.randrange(len(race.hair_styles)) if race.hair_styles else 0,
                 ),
                 beard_style_idx=kw.get("beard_style_idx", beard_idx),
-                asymmetry=kw.get("asymmetry", rng.random() * 0.05),
+                asymmetry=kw.get("asymmetry", 0.0),
                 feature_roll=kw.get("feature_roll", rng.random()),
             )
             return base
@@ -84,7 +84,7 @@ def roll_traits(spec: CharacterSpec, race: RaceDef, tuning=None) -> TraitRoll:
         eye_palette_idx=rng.randrange(len(race.palette_slots.eye)),
         hair_style_idx=rng.randrange(len(race.hair_styles)) if race.hair_styles else 0,
         beard_style_idx=beard_idx,
-        asymmetry=rng.random() * 0.05,
+        asymmetry=0.0,
         feature_roll=rng.random(),
     )
 

@@ -23,14 +23,14 @@
     "topknot": [[0, 0, 1, "hair"], [0, 1, 2, "hair"]],
     "shaved": []
   },
-  "ashkin": {
-    "short_tattered": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"]],
+    "ashkin": {
+    "short_tattered": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"]],
     "hood_down": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 1, "hair"], [1, 0, 1, "hair"]],
     "bald": []
   },
   "rootbound": {
-    "vine_crown": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, 1, 2, "hair"]],
-    "moss_cap": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, 1, 1, "hair"]],
+    "vine_crown": [[0, 0, 1, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, 1, 2, "hair"], [0, -1, 2, "hair"]],
+    "moss_cap": [[0, 0, 1, "hair"], [0, 0, 2, "hair"], [-1, 0, 2, "hair"], [1, 0, 2, "hair"], [0, 1, 1, "hair"], [0, -1, 1, "hair"]],
     "bald": []
   },
   "whisper": {

@@ -7,6 +7,7 @@ from dataclasses import dataclass, fields, replace
 from src.characters.loader import load_hair_styles, load_race
 from src.characters.morphology import CharacterMorphology
 from src.characters.poses import load_pose_delta
+from src.constants import TILES_PER_M_XY, TILES_PER_M_Z
 from src.prototype.dia_scale.tree_voxel_gen import TreeVoxelModel, _fill_cylinder, _fill_sphere
 
 VOXEL_SKIN = "skin"
@@ -21,10 +22,6 @@ BODY_ARM_L = "body_arm_l"
 BODY_ARM_R = "body_arm_r"
 BODY_LEG_L = "body_leg_l"
 BODY_LEG_R = "body_leg_r"
-
-# Legacy module-level aliases (default config)
-TILES_PER_M_XY = 5
-TILES_PER_M_Z = 10
 
 
 @dataclass(frozen=True)
@@ -322,17 +319,22 @@ def _add_race_features(voxels: dict, morph: CharacterMorphology, *, ax0: float, 
     ty = ay0 + _m_to_tiles_xy(chest.y)
     tz = _m_to_tiles_z(chest.z)
     if morph.has_feature("stone_patch"):
-        for _ in range(rng.randint(1, 4)):
-            _fill_ellipsoid(
-                voxels,
-                tx + rng.uniform(-0.8, 0.8),
-                ty + rng.uniform(-0.5, 0.5),
-                tz + rng.uniform(-1.0, 1.0),
-                0.45, 0.35, 0.5,
-                VOXEL_FEATURE,
-            )
+        for _ in range(rng.randint(1, 3)):
+            ox = rng.uniform(0.25, 0.75)
+            oy = rng.uniform(-0.35, 0.35)
+            oz = rng.uniform(-0.8, 0.8)
+            for side in (-1, 1):
+                _fill_ellipsoid(
+                    voxels,
+                    tx + side * ox,
+                    ty + oy,
+                    tz + oz,
+                    0.45, 0.35, 0.5,
+                    VOXEL_FEATURE,
+                )
     if morph.has_feature("bark_skin"):
-        _fill_ellipsoid(voxels, tx + 0.5, ty, tz, 0.55, 0.45, 0.6, VOXEL_FEATURE)
+        for side in (-1, 1):
+            _fill_ellipsoid(voxels, tx + side * 0.5, ty, tz, 0.55, 0.45, 0.6, VOXEL_FEATURE)
 
 
 def morphology_to_voxels(
@@ -356,6 +358,12 @@ def morphology_to_voxels(
         _add_hair_template(voxels, morph, ax0=ax0, ay0=ay0)
         _finalize_head_voxels(voxels, morph, ax0=ax0, ay0=ay0)
         _add_race_features(voxels, morph, ax0=ax0, ay0=ay0)
+
+        if pose_id.startswith("idle_"):
+            from src.characters.symmetry import enforce_bilateral_symmetry
+
+            ax_i, ay_i = int(round(ax0)), int(round(ay0))
+            voxels = enforce_bilateral_symmetry(voxels, anchor_x=ax_i, anchor_y=ay_i)
 
         height_tiles = max(1, int(round(_m_to_tiles_z(morph.height_m))))
         if voxels:

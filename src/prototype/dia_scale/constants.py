@@ -1,16 +1,17 @@
 """Scale and display constants for test_2x1_dia (prototype only)."""
 from __future__ import annotations
 
+from src.constants import (
+    STAMP_PREVIEW,
+    TILE_XY_M,
+    TILE_Z_M,
+    TILES_PER_M_XY,
+    TILES_PER_M_Z,
+)
+
 # Iso-square 2a stamp bbox (chars on floor meadow)
 STAMP_CW = 3
 STAMP_CH = 2
-STAMP_PREVIEW = ("@@_", "_@@")
-
-# Anisotropic tile scale (1 voxel/tile unit)
-TILES_PER_M_XY = 5
-TILES_PER_M_Z = 10
-TILE_XY_M = 1.0 / TILES_PER_M_XY
-TILE_Z_M = 1.0 / TILES_PER_M_Z
 
 # Legacy aliases (floor char horizontal size derived from iso-square width)
 TILES_PER_M = TILES_PER_M_XY

@@ -120,6 +120,7 @@ def generate_morphology(spec: CharacterSpec, tuning: TuningState | None = None) 
     neck_r = h * _frac("neck_r", tuning)
     foot_r = h * _frac("foot_r", tuning)
     leg_spread = hip_hw * 0.72 + traits.asymmetry
+    leg_spread = max(leg_spread, foot_r * 1.35 + 0.015)
 
     z_ankle = foot_h * 0.55
     z_knee = foot_h + calf_h
@@ -145,10 +146,10 @@ def generate_morphology(spec: CharacterSpec, tuning: TuningState | None = None) 
         "chest": AnchorPoint(0.0, chest_depth * 0.35, z_chest + upper_slouch),
         "shoulder_l": AnchorPoint(-shoulder_hw, 0.0, z_shoulder + upper_slouch),
         "shoulder_r": AnchorPoint(shoulder_hw, 0.0, z_shoulder + upper_slouch),
-        "elbow_l": AnchorPoint(-shoulder_hw - upper_arm_r * 0.3, 0.0, z_chest - upper_arm_r * 2 + upper_slouch),
-        "elbow_r": AnchorPoint(shoulder_hw + upper_arm_r * 0.3, 0.0, z_chest - upper_arm_r * 2 + upper_slouch),
-        "wrist_l": AnchorPoint(-shoulder_hw - upper_arm_r * 0.6, 0.0, z_hip + pelvis_h * 0.5 + upper_slouch),
-        "wrist_r": AnchorPoint(shoulder_hw + upper_arm_r * 0.6, 0.0, z_hip + pelvis_h * 0.5 + upper_slouch),
+        "elbow_l": AnchorPoint(-shoulder_hw, 0.0, z_chest - upper_arm_r * 2 + upper_slouch),
+        "elbow_r": AnchorPoint(shoulder_hw, 0.0, z_chest - upper_arm_r * 2 + upper_slouch),
+        "wrist_l": AnchorPoint(-shoulder_hw, 0.0, z_hip + pelvis_h * 0.5 + upper_slouch),
+        "wrist_r": AnchorPoint(shoulder_hw, 0.0, z_hip + pelvis_h * 0.5 + upper_slouch),
         "neck_base": AnchorPoint(0.0, neck_r * 0.4, z_neck_base + upper_slouch),
         "head_center": AnchorPoint(0.0, head_r * 0.25, z_head_center + upper_slouch),
         "head_top": AnchorPoint(0.0, 0.0, z_head_top + upper_slouch),
@@ -275,10 +276,10 @@ def rebuild_skeleton_from_proportions(morph: CharacterMorphology) -> None:
         "chest": AnchorPoint(0.0, p.chest_depth * 0.35, z_chest + upper_slouch),
         "shoulder_l": AnchorPoint(-sh, 0.0, z_shoulder + upper_slouch),
         "shoulder_r": AnchorPoint(sh, 0.0, z_shoulder + upper_slouch),
-        "elbow_l": AnchorPoint(-sh - ua * 0.3, 0.0, z_chest - ua * 2 + upper_slouch),
-        "elbow_r": AnchorPoint(sh + ua * 0.3, 0.0, z_chest - ua * 2 + upper_slouch),
-        "wrist_l": AnchorPoint(-sh - ua * 0.6, 0.0, z_hip + p.pelvis_h * 0.5 + upper_slouch),
-        "wrist_r": AnchorPoint(sh + ua * 0.6, 0.0, z_hip + p.pelvis_h * 0.5 + upper_slouch),
+        "elbow_l": AnchorPoint(-sh, 0.0, z_chest - ua * 2 + upper_slouch),
+        "elbow_r": AnchorPoint(sh, 0.0, z_chest - ua * 2 + upper_slouch),
+        "wrist_l": AnchorPoint(-sh, 0.0, z_hip + p.pelvis_h * 0.5 + upper_slouch),
+        "wrist_r": AnchorPoint(sh, 0.0, z_hip + p.pelvis_h * 0.5 + upper_slouch),
         "neck_base": AnchorPoint(0.0, p.neck_r * 0.4, z_neck_base + upper_slouch),
         "head_center": AnchorPoint(0.0, p.head_r * 0.25, z_head_center + upper_slouch),
         "head_top": AnchorPoint(0.0, 0.0, z_head_top + upper_slouch),

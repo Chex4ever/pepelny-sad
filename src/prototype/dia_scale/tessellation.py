@@ -1,10 +1,20 @@
-"""2a iso-square stamp tessellation (horiz_brick) and camera rotation."""
+"""2a iso-square stamp tessellation (diag layout) and camera rotation."""
 from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
 
 from src.prototype.dia_scale.constants import STAMP_PREVIEW
+
+ISO32_TIP = (1, 1)
+
+# 2×2 diag patch alphabet sketch (tiles a,b,c,d — seams OK, internal gaps = 0).
+DIAG_2X2_SKETCH: tuple[str, ...] = (
+    "__bb",
+    "aabbdd",
+    "_aaccdd",
+    "____cc",
+)
 
 ISO32_CELLS: frozenset[tuple[int, int]] = frozenset(
     (x, y)
@@ -13,10 +23,31 @@ ISO32_CELLS: frozenset[tuple[int, int]] = frozenset(
     if ch == "@"
 )
 
+# Six tile-index neighbors on the diagonal iso lattice (shared stamp edges).
+TILE_NEIGHBOR_DELTAS: tuple[tuple[int, int], ...] = (
+    (1, 0),
+    (-1, 0),
+    (0, 1),
+    (0, -1),
+    (1, -1),
+    (-1, 1),
+)
+
+
+def stamp_tip(tx: int, ty: int) -> tuple[int, int]:
+    """Bottom tip of tile (tx, ty) in tessellation char space (not IsoProjector wx/wy)."""
+    return tx - ty, tx + ty
+
 
 def stamp_origin(tx: int, ty: int) -> tuple[int, int]:
-    """Horiz_brick placement: gap-free interior (ox=tx*2+(ty%2), oy=ty)."""
-    return tx * 2 + (ty % 2), ty
+    """Top-left of @@_/_@@ stamp bbox for tile (tx, ty)."""
+    ax, ay = stamp_tip(tx, ty)
+    return ax - ISO32_TIP[0], ay - ISO32_TIP[1]
+
+
+def tile_neighbors(tx: int, ty: int) -> tuple[tuple[int, int], ...]:
+    """Six adjacent tiles on the diagonal iso lattice."""
+    return tuple((tx + dx, ty + dy) for dx, dy in TILE_NEIGHBOR_DELTAS)
 
 
 def stamp_origins(nx: int, ny: int) -> list[tuple[int, int, int, int]]:
@@ -61,7 +92,7 @@ class CoverageStats:
 
 
 def analyze_floor_coverage(nx: int, ny: int) -> CoverageStats:
-    """Coverage of horiz_brick stamp union (world-fixed, no rotation)."""
+    """Coverage of diag stamp union (world-fixed, no rotation)."""
     counts: Counter = Counter()
     for *_ids, ox, oy in stamp_origins(nx, ny):
         for cell in stamp_cells_at(ox, oy):

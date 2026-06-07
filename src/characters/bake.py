@@ -19,12 +19,11 @@ from src.characters.poses import (
 )
 from src.characters.spec import CharacterSpec
 from src.characters.voxel_edits import VoxelEditLayer, apply_edits
+from src.constants import TILES_PER_M_Z
 from src.prototype.dia_scale.tree_voxel_gen import TreeVoxelModel
 
 if TYPE_CHECKING:
     from src.characters.tuning import TuningState
-
-TILES_PER_M_Z = 10
 
 
 @dataclass

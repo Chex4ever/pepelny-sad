@@ -1,13 +1,11 @@
 """Convert TreeMorphology to dia_scale voxel model."""
 from __future__ import annotations
 
+from src.constants import TILES_PER_M_XY, TILES_PER_M_Z
 from src.prototype.dia_scale.constants import VOXEL_BRANCH, VOXEL_LEAF, VOXEL_TRUNK
 from src.prototype.dia_scale.tree_voxel_gen import TreeVoxelModel, _fill_cylinder, _fill_sphere
 from src.trees.loader import load_species
 from src.trees.morphology import TreeMorphology
-
-TILES_PER_M_XY = 5
-TILES_PER_M_Z = 10
 
 
 def _m_to_tiles_xy(m: float) -> float:

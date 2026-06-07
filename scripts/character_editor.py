@@ -23,6 +23,8 @@ import pygame
 from src.characters.anim import AnimPlayer
 from src.characters.bake import bake_pose_set
 from src.characters.editor_anim_bar import EditorAnimBar
+from src.characters.editor_fonts import editor_mono_font, editor_ui_font, transport_icon_font
+from src.characters.editor_lighting_panel import EditorLightingPanel
 from src.characters.editor_mode_bar import EditorModeBar
 from src.characters.editor_parts_tree import EditorPartsTree
 from src.characters.editor_state import EditorState
@@ -61,6 +63,16 @@ from src.prototype.dia_scale.iso_character_renderer import IsoCharacterRenderer
 
 DEBOUNCE_S = 0.15
 MODE_BAR_H = 22
+LIGHT_PANEL_H = 78
+
+
+def _wheel_steps(ev: pygame.event.Event) -> int:
+    if getattr(ev, "precise_y", 0):
+        return int(round(ev.precise_y))
+    y = ev.y
+    if y == 0:
+        return 0
+    return y // 120 or (1 if y > 0 else -1)
 
 
 def _apply_age_preset(ctrl: SpecController, preset: str) -> None:
@@ -113,19 +125,23 @@ def run_interactive(args: argparse.Namespace) -> int:
     )
 
     parts_tree = EditorPartsTree()
+    lighting_panel = EditorLightingPanel()
     anim_bar = EditorAnimBar()
     mode_bar = EditorModeBar()
     race_bar = RaceAgeBar(compact=False)
     settings = SettingsPanel()
 
-    font = pygame.font.SysFont("segoe ui", 13)
-    small = pygame.font.SysFont("segoe ui", 11)
-    mono = pygame.font.SysFont("consolas", 10)
+    font = editor_ui_font(13)
+    small = editor_ui_font(11)
+    mono = editor_mono_font(10)
+    icon_font, transport_icons = transport_icon_font(11)
 
     screen = pygame.display.set_mode((EDITOR_WINDOW_PX_W, EDITOR_WINDOW_PX_H))
     pygame.display.set_caption("character_editor [generator]")
 
     parts_rect = Rect(0, 0, EDITOR_PARTS_W, EDITOR_WINDOW_PX_H - EDITOR_ANIM_H)
+    parts_tree_rect = Rect(parts_rect.x, parts_rect.y, parts_rect.w, parts_rect.h - LIGHT_PANEL_H)
+    lighting_rect = Rect(parts_rect.x, parts_rect.y + parts_tree_rect.h, parts_rect.w, LIGHT_PANEL_H)
     view_rect = Rect(EDITOR_PARTS_W, 0, EDITOR_VIEW_W, EDITOR_VIEW_H)
     params_rect = Rect(EDITOR_PARTS_W + EDITOR_VIEW_W, 0, EDITOR_PARAMS_W, EDITOR_WINDOW_PX_H - EDITOR_ANIM_H)
     mode_rect = Rect(params_rect.x, 0, EDITOR_PARAMS_W, MODE_BAR_H)
@@ -211,8 +227,13 @@ def run_interactive(args: argparse.Namespace) -> int:
             if anim_bar.handle_event(ev, anim=anim, on_change=lambda: None, mx=mx, my=my, rect=anim_rect):
                 continue
 
+            if lighting_panel.handle_event(
+                ev, lighting=editor.lighting, on_change=lambda: None, mx=mx, my=my, rect=lighting_rect,
+            ):
+                continue
+
             if parts_tree.handle_event(
-                ev, state=editor, on_change=lambda: mark_dirty(rebuild_edits=True), mx=mx, my=my, rect=parts_rect,
+                ev, state=editor, on_change=lambda: mark_dirty(rebuild_edits=True), mx=mx, my=my, rect=parts_tree_rect,
             ):
                 continue
 
@@ -229,6 +250,18 @@ def run_interactive(args: argparse.Namespace) -> int:
                 continue
 
             if ev.type == pygame.KEYDOWN:
+                mods = pygame.key.get_mods()
+                shift = mods & (pygame.KMOD_LSHIFT | pygame.KMOD_RSHIFT)
+                if shift and ev.key in (pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d):
+                    if ev.key == pygame.K_w:
+                        editor.lighting.nudge_elevation(4.0)
+                    elif ev.key == pygame.K_s:
+                        editor.lighting.nudge_elevation(-4.0)
+                    elif ev.key == pygame.K_a:
+                        editor.lighting.nudge_azimuth(-8.0)
+                    elif ev.key == pygame.K_d:
+                        editor.lighting.nudge_azimuth(8.0)
+                    continue
                 if ev.key == pygame.K_ESCAPE:
                     editor.deselect()
                 elif ev.key == pygame.K_SPACE:
@@ -242,12 +275,18 @@ def run_interactive(args: argparse.Namespace) -> int:
                 elif ev.key == pygame.K_a:
                     anim.set_manual_phase((anim.walk_phase() - 1) % 3)
                     anim.paused = True
-                elif ev.key == pygame.K_s and not (pygame.key.get_mods() & pygame.KMOD_CTRL):
+                elif ev.key == pygame.K_s and not (mods & pygame.KMOD_CTRL):
                     anim.set_manual_phase((anim.walk_phase() + 1) % 3)
                     anim.paused = True
                 elif ev.key == pygame.K_r:
                     ctrl.seed = (ctrl.seed * 1103515245 + 12345) & 0x7FFFFFFF
                     mark_dirty()
+                elif ev.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+                    if view_rect.collide(mx, my):
+                        editor.nudge_view_scale(1)
+                elif ev.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+                    if view_rect.collide(mx, my):
+                        editor.nudge_view_scale(-1)
                 else:
                     delta = arrow_delta(ev.key, anim.facing)
                     if delta and editor.selected_voxel and last_render is not None:
@@ -296,6 +335,12 @@ def run_interactive(args: argparse.Namespace) -> int:
                             mark_dirty(rebuild_edits=True)
                     continue
 
+            if view_rect.collide(mx, my) and ev.type == pygame.MOUSEWHEEL:
+                steps = _wheel_steps(ev)
+                if steps:
+                    editor.nudge_view_scale(1 if steps > 0 else -1)
+                continue
+
         screen.fill((10, 12, 18))
 
         model = anim.current_model()
@@ -305,8 +350,8 @@ def run_interactive(args: argparse.Namespace) -> int:
         diag = analyze_voxels(model.voxels, walking=anim.walking).summary()
         hud = [
             f"[{editor.mode}] {race.display_name} seed={ctrl.seed} facing={anim.facing} "
-            f"{'PAUSED' if anim.paused else 'PLAY'} phase={anim.walk_phase()}",
-            "Z/X=facing A/S=frame arrows=move | docs/CHARACTER_EDITOR.md",
+            f"{'PAUSED' if anim.paused else 'PLAY'} phase={anim.walk_phase()} scale={editor.view_scale}x",
+            "Z/X=facing A/S=frame Shift+WS/AD=sun wheel/+/-=zoom | docs/CHARACTER_EDITOR.md",
             diag,
         ]
         view_surf = renderer.render(
@@ -318,6 +363,9 @@ def run_interactive(args: argparse.Namespace) -> int:
             highlight_kind=editor.selected_kind,
             highlight_voxel=editor.selected_voxel,
             walking=anim.walking,
+            view_scale=editor.view_scale,
+            lighting=editor.lighting,
+            floor_seed=ctrl.seed,
         )
         last_render = view_surf
         if rebuilding:
@@ -327,7 +375,8 @@ def run_interactive(args: argparse.Namespace) -> int:
             view_surf.surface.blit(font.render("rebuilding…", True, (255, 220, 120)), (12, 40))
         screen.blit(view_surf.surface, (view_rect.x, view_rect.y))
 
-        parts_tree.draw(screen, state=editor, rect=parts_rect, font=font, small=small)
+        parts_tree.draw(screen, state=editor, rect=parts_tree_rect, font=font, small=small)
+        lighting_panel.draw(screen, lighting=editor.lighting, rect=lighting_rect, small=small)
         mode_bar.draw(screen, mode=editor.mode, rect=mode_rect, small=small)
         race_bar.draw(screen, ctrl=ctrl, rect=race_rect, font=font, small=small, tuning=tuning)
         if not settings_readonly():
@@ -346,7 +395,7 @@ def run_interactive(args: argparse.Namespace) -> int:
                 small.render("Export saves voxel_edits.json", True, (100, 105, 120)),
                 (settings_rect.x + 8, settings_rect.y + 28),
             )
-        anim_bar.draw(screen, anim=anim, rect=anim_rect, font=font, small=small)
+        anim_bar.draw(screen, anim=anim, rect=anim_rect, font=font, small=small, icon_font=icon_font, icons=transport_icons)
 
         pygame.draw.line(screen, (55, 60, 80), (EDITOR_PARTS_W, 0), (EDITOR_PARTS_W, EDITOR_WINDOW_PX_H), 1)
         pygame.draw.line(
