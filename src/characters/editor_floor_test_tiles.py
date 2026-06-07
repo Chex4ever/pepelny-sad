@@ -75,6 +75,27 @@ EDITOR_FLOOR_5X5_TILE_LAYOUT_ROW_WIDTHS: tuple[int, ...] = tuple(
     sum(1 for ch in row if ch != "_") for row in EDITOR_FLOOR_5X5_TILE_REFERENCE
 )
 
+# Feet anchor on the 19×10 packed layout canvas (center tile visible band).
+PACKED_LAYOUT_FEET_COL = 9
+PACKED_LAYOUT_FEET_ROW = 5
+
+
+def packed_layout_silhouette(
+    reference: tuple[str, ...] = EDITOR_FLOOR_5X5_TILE_REFERENCE,
+) -> frozenset[tuple[int, int]]:
+    """Every (col, row) glyph cell in the layout golden (editor screen diamond)."""
+    cells: set[tuple[int, int]] = set()
+    for row, line in enumerate(reference):
+        for col, ch in enumerate(line):
+            if ch != "_":
+                cells.add((col, row))
+    return frozenset(cells)
+
+
+def packed_layout_screen_offset(col: int, row: int) -> tuple[int, int]:
+    """Screen offset from feet on the packed layout grid (one cell per col)."""
+    return (col - PACKED_LAYOUT_FEET_COL, row - PACKED_LAYOUT_FEET_ROW)
+
 # Sketch letter per visible stamp slot (5×5 display tiles — test fixture, not decoded).
 TILE_SLOT_DISPLAY: dict[tuple[int, int, int], str] = {
     (0, 0, 2): "p",

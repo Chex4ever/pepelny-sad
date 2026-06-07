@@ -14,10 +14,12 @@ from src.characters.editor_diagnostics import DiagnosticMarker, DiagnosticReport
 from src.characters.editor_floor import (
     FloorGlyphCell,
     build_floor_patch,
-    floor_iso_draw_map,
+    floor_packed_draw_map,
+    floor_packed_layout_offsets,
     floor_screen_offset,
     floor_solid_char_cells,
 )
+from src.characters.editor_floor_test_tiles import packed_layout_screen_offset
 from src.characters.editor_lighting import EditorLighting, brightness_at, shade_from_brightness
 from src.characters.editor_shading import (
     build_column_depth,
@@ -146,24 +148,21 @@ class IsoCharacterRenderer:
         floor_shadow: set[tuple[int, int]],
         floor_seed: int = 0,
     ) -> None:
-        """5×5 diag stamp floor on iso screen (row spans filled — no gaps)."""
-        draw_map = floor_iso_draw_map(
+        """5×5 stamp floor on packed layout grid (same diamond as layout golden)."""
+        draw_map = floor_packed_draw_map(
             feet_cx, feet_cy, seed=floor_seed,
         )
-        drawn_char: set[tuple[int, int]] = {
-            floor_screen_offset(c.cx, c.cy, ref_cx=feet_cx, ref_cy=feet_cy)
-            for c in floor_cells
-        }
-        for (su, sv), cell in draw_map.items():
-            px = ox + su * cw
-            py = oy + sv * ch
+        for (col, row), cell in draw_map.items():
+            lu, lv = packed_layout_screen_offset(col, row)
+            px = ox + lu * cw
+            py = oy + lv * ch
             b = brightness_at(float(cell.cx), float(cell.cy), 0.0, lighting=lighting, up_bias=1.0)
             if (cell.cx, cell.cy) in floor_shadow:
                 b *= 0.55
             fg, bg = shade_from_brightness(cell.fg, cell.bg, b)
             rect = pygame.Rect(px, py, cw, ch)
             pygame.draw.rect(surf, bg, rect)
-            if (su, sv) in drawn_char and cw >= 4 and ch >= 6 and cell.ch.strip():
+            if cw >= 4 and ch >= 6 and cell.ch.strip():
                 surf.blit(self._font.render(cell.ch, True, fg), (px, py))
 
     def _blink_on(self, *, freq: float = 3.5) -> bool:
@@ -240,14 +239,13 @@ class IsoCharacterRenderer:
 
         projected_raw: list[tuple[float, int, int, str, tuple, tuple, str, VoxelPos]] = []
         floor_proj: list[tuple[int, int]] = []
-        if floor_cells:
-            for cell in floor_cells:
-                floor_proj.append(
-                    floor_screen_offset(
-                        cell.cx, cell.cy,
-                        ref_cx=feet_cx, ref_cy=feet_cy,
-                    )
+        if show_floor:
+            floor_proj.extend(
+                packed_layout_screen_offset(col, row)
+                for col, row in floor_packed_draw_map(
+                    feet_cx, feet_cy, seed=floor_seed,
                 )
+            )
 
         for (x, y, z), kind in model.voxels.items():
             if kind_filter is not None and kind not in kind_filter:
