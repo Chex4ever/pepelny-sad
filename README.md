@@ -84,7 +84,19 @@ python -m pytest --cov=src --cov-report=term-missing
 Только unit-тесты: `python -m pytest tests/unit`  
 Только интеграционные: `python -m pytest tests/integration -m integration`  
 **Регрессия (порядок импортов / `main.py`):** `python -m pytest tests/regression -m regression`  
-**Производительность (бюджеты кадра / FOV):** `python -m pytest tests/performance/ -q` — см. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)
+**Производительность (бюджеты кадра / FOV):** `python -m pytest tests/performance/ -q` — см. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)  
+**Редактор уровней (CPU):** `python scripts/profile_level_editor.py` — см. [`docs/LEVEL_EDITOR_PERFORMANCE.md`](docs/LEVEL_EDITOR_PERFORMANCE.md)
+
+### Документация редакторов и движка
+
+| Документ | Содержание |
+|----------|------------|
+| [`docs/CHARACTER_EDITOR.md`](docs/CHARACTER_EDITOR.md) | Редактор персонажа |
+| [`docs/LEVEL_EDITOR.md`](docs/LEVEL_EDITOR.md) | Редактор уровней |
+| [`docs/ENGINE.md`](docs/ENGINE.md) | `src/engine/` — layout, floor, projection |
+| [`docs/ISO_LAYOUT.md`](docs/ISO_LAYOUT.md) | Packed diamond, golden, оси |
+| [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) | Overworld GPU gate |
+| [`docs/LEVEL_EDITOR_PERFORMANCE.md`](docs/LEVEL_EDITOR_PERFORMANCE.md) | Level editor CPU, план оптимизации |
 
 > `conftest.py` вызывает `init_paths()` заранее — это удобно для unit/integration, но **скрывает** баги вроде `DATA_DIR=None`. Регрессионные тесты запускаются в отдельном subprocess без ранней инициализации.
 

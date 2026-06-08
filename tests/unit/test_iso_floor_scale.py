@@ -5,7 +5,7 @@ import pytest
 
 
 @pytest.mark.unit
-def test_floor_world_extent_1m():
+def test_character_floor_extent_1m():
     from src.prototype.dia_scale.iso_character_renderer import floor_tile_range, floor_world_extent
     from src.render.iso_character_view import EDITOR_FLOOR_TILES
 
@@ -13,6 +13,15 @@ def test_floor_world_extent_1m():
     x0, y0, x1, y1 = floor_world_extent(0, 0)
     assert x1 > x0
     assert y1 > y0
+
+
+@pytest.mark.unit
+def test_level_editor_patch_tiles_3m_default():
+    from src.constants import TILES_PER_M_XY
+    from src.render.iso_character_view import DEFAULT_EDITOR_FLOOR_METERS, editor_floor_patch_tiles
+
+    n = editor_floor_patch_tiles()
+    assert n == int(DEFAULT_EDITOR_FLOOR_METERS * TILES_PER_M_XY)
 
 
 @pytest.mark.unit

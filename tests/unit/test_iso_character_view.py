@@ -81,8 +81,8 @@ def test_idle_s_arms_same_screen_height(chars_env, race_id: str):
 
 
 @pytest.mark.unit
-def test_editor_floor_has_25_diag_iso_tiles(chars_env):
-    """1 m patch = 5×5 diag iso tiles, iso screen projection."""
+def test_editor_floor_has_diag_iso_tiles(chars_env):
+    """Character editor floor: 1 m (5×5) diag iso tiles centered on feet."""
     from src.characters.editor_floor import (
         build_floor_patch,
         floor_screen_offset,
@@ -90,14 +90,15 @@ def test_editor_floor_has_25_diag_iso_tiles(chars_env):
     )
     from src.render.iso_character_view import EDITOR_FLOOR_TILES
 
+    n = EDITOR_FLOOR_TILES
     patch = build_floor_patch(0, 0, seed=2)
-    assert len(floor_tile_anchors(0, 0)) == EDITOR_FLOOR_TILES ** 2
-    assert len(patch) > 0
+    assert len(floor_tile_anchors(0, 0, n_tiles=n)) == n ** 2
+    assert len(patch) == 60
     anchors_iso = {
         floor_screen_offset(ax, ay, ref_cx=0, ref_cy=0)
-        for _tx, _ty, ax, ay in floor_tile_anchors(0, 0)
+        for _tx, _ty, ax, ay in floor_tile_anchors(0, 0, n_tiles=n)
     }
-    assert len(anchors_iso) == EDITOR_FLOOR_TILES ** 2
+    assert len(anchors_iso) == n ** 2
 
 
 @pytest.mark.unit

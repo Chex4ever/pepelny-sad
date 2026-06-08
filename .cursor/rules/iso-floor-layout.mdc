@@ -1,0 +1,57 @@
+---
+description: Diag floor packed screen layout — stamp slots, axis silhouettes, APIs
+globs: src/engine/layout/**,src/engine/floor/**,src/world/editor/**,src/characters/editor_floor*.py,docs/ISO_LAYOUT.md,docs/LEVEL_EDITOR.md
+alwaysApply: false
+---
+
+# Iso floor screen layout
+
+One scheme everywhere (character editor + level editor): **3×2 stamp** per tile, **packed screen grid** — not `IsoProjector` footprint, not metre-block copy of 5×5.
+
+## Stamp (slots 1..4, user numbering)
+
+```
+1 2 _
+_ 3 4
+```
+
+Internal `slot` = 0..3. All four slots of one tile must stay one stamp on screen (anchor from `screen_row_tile_slot`, then offsets in `screen_slots._STAMP_FROM_SLOT0`).
+
+## Axis silhouettes (reference)
+
+Digit = tile index on that axis; `_` = empty screen cell.
+
+**`ty` (+Y north, toward top of sketch):**
+
+```
+____44
+___3344
+__2233
+_1122
+0011
+_00
+```
+
+**`tx` (+X east, toward bottom-right):**
+
+```
+00
+_0011
+____1122
+_______2233
+__________3344
+_____________44
+```
+
+On screen (pygame): **+X** down-right, **+Y** up-right. Full spec: `docs/ISO_LAYOUT.md`.
+
+## Code
+
+| Task | Module |
+|------|--------|
+| Scan-line rule | `screen_row_tile_slot()` |
+| Tile → packed `(row, col)` | `build_tile_slot_screen_map()`, `resolve_tile_slot_view()` |
+| Draw / pick | `floor_packed_draw_map_from_cells()`, `build_packed_tile_pick_map()` |
+| Camera | `cam_tx`, `cam_ty` — anchor tile slot **1** at packed `(0, 0)` |
+
+Pick and highlight use **layout tile** `(tx, ty)` from the slot map, not char-cell seam owner.

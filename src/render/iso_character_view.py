@@ -18,8 +18,16 @@ YAW_DEFAULT_DEG = 0.0
 YAW_FACINGS = 8
 ZOOM_FIXED = 1.0
 
-# Editor floor grid extent (5×5 tiles = 1 m at TILES_PER_M_XY=5).
-EDITOR_FLOOR_TILES = TILES_PER_M_XY
+# Re-export floor sizing from engine (character editor uses 1 m layout unit).
+from src.engine.config import (  # noqa: F401
+    DEFAULT_EDITOR_FLOOR_METERS,
+    FLOOR_LAYOUT_TILES,
+    editor_floor_meters,
+    editor_floor_patch_tiles,
+)
+
+# One floor tile layout unit: 5×5 diag tiles = 1 m (packed diamond draw).
+EDITOR_FLOOR_TILES = FLOOR_LAYOUT_TILES
 
 # Iso game view glyph scale (editor only; 1× = in-game cell size).
 EDITOR_VIEW_SCALE_MIN = 1

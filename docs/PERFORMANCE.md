@@ -216,10 +216,28 @@ flowchart TD
 | `PEPELNY_SKIP_GPU_PERF` | — | Локальный skip (не CI) |
 | `PEPELNY_TEST_ISO_CPU` | — | 165 ms gate на iso CPU |
 
+## Level editor (CPU, отдельный контур)
+
+Редактор уровней **не** использует GPU overworld path. Патч 25×25 = 2500 pygame blit/кадр.
+
+| Метрика | До кэша layout | После (v0.3+) |
+|---------|----------------|---------------|
+| Кадр 25×25 | ~2740 ms | **~45 ms** |
+
+Подробный план (dirty-флаг, glyph cache, perf gate): **[`LEVEL_EDITOR_PERFORMANCE.md`](LEVEL_EDITOR_PERFORMANCE.md)**.
+
+```bash
+python scripts/profile_level_editor.py --frames 30
+```
+
+---
+
 ## Ссылки
 
 - `src/render/gpu/iso_renderer.py` — gpu_batch  
 - `src/render/gpu/presenter.py` — gpu_map timer  
 - `src/scenes/overworld/map_renderer.py` — draw_queue  
 - `src/core/perf_benchmark.py` — бюджеты  
-- `tests/performance/test_overworld_gpu_perf.py` — gate
+- `tests/performance/test_overworld_gpu_perf.py` — gate  
+- `docs/LEVEL_EDITOR_PERFORMANCE.md` — level editor CPU  
+- `scripts/profile_level_editor.py` — профилировщик редактора

@@ -11,15 +11,15 @@ from src.prototype.dia_scale.display_scale import DisplayPreset, PRESET_NORMAL
 from src.prototype.dia_scale.tree_voxel_gen import TreeVoxelModel
 from src.prototype.dia_scale.voxel_3d_renderer import _kind_colors, _rotate_xyz
 from src.characters.editor_diagnostics import DiagnosticMarker, DiagnosticReport, analyze_voxels, compute_floor_z
-from src.characters.editor_floor import (
+from src.engine.config import EDITOR_FLOOR_TILES
+from src.engine.floor import (
     FloorGlyphCell,
     build_floor_patch,
     floor_packed_draw_map,
-    floor_packed_layout_offsets,
-    floor_screen_offset,
     floor_solid_char_cells,
 )
-from src.characters.editor_floor_test_tiles import packed_layout_screen_offset
+from src.engine.projection.packed import layout_cell_to_screen
+from src.engine.viewport.floor import draw_packed_floor
 from src.characters.editor_lighting import EditorLighting, brightness_at, shade_from_brightness
 from src.characters.editor_shading import (
     build_column_depth,
@@ -28,7 +28,6 @@ from src.characters.editor_shading import (
     shade_factor_for_voxel,
 )
 from src.render.iso_character_view import (
-    EDITOR_FLOOR_TILES,
     PITCH_CHARACTER_DEG,
     YAW_DEFAULT_DEG,
     ZOOM_FIXED,
@@ -38,12 +37,12 @@ VoxelPos = tuple[int, int, int]
 
 
 def floor_tile_range() -> range:
-    """Tile indices for 5×5 floor (1 m), centered on anchor."""
+    """Tile indices for 1 m character-editor floor patch."""
     return range(EDITOR_FLOOR_TILES)
 
 
 def floor_world_extent(cx0: float, cy0: float) -> tuple[float, float, float, float]:
-    """Char-grid AABB of the 1 m floor patch (exclusive max)."""
+    """Char-grid AABB of the editor floor patch (exclusive max)."""
     solid = floor_solid_char_cells(int(round(cx0)), int(round(cy0)))
     if not solid:
         return cx0, cy0, cx0, cy0
@@ -148,22 +147,23 @@ class IsoCharacterRenderer:
         floor_shadow: set[tuple[int, int]],
         floor_seed: int = 0,
     ) -> None:
-        """5×5 stamp floor on packed layout grid (same diamond as layout golden)."""
-        draw_map = floor_packed_draw_map(
-            feet_cx, feet_cy, seed=floor_seed,
+        _ = floor_cells
+        draw_packed_floor(
+            surf,
+            feet_cx=feet_cx,
+            feet_cy=feet_cy,
+            ox=ox,
+            oy=oy,
+            cell_w=cw,
+            cell_h=ch,
+            font=self._font,
+            floor_seed=floor_seed,
+            brightness_at=lambda cx, cy, z: brightness_at(
+                cx, cy, z, lighting=lighting, up_bias=1.0,
+            ),
+            shade_from_brightness=shade_from_brightness,
+            floor_shadow=floor_shadow,
         )
-        for (col, row), cell in draw_map.items():
-            lu, lv = packed_layout_screen_offset(col, row)
-            px = ox + lu * cw
-            py = oy + lv * ch
-            b = brightness_at(float(cell.cx), float(cell.cy), 0.0, lighting=lighting, up_bias=1.0)
-            if (cell.cx, cell.cy) in floor_shadow:
-                b *= 0.55
-            fg, bg = shade_from_brightness(cell.fg, cell.bg, b)
-            rect = pygame.Rect(px, py, cw, ch)
-            pygame.draw.rect(surf, bg, rect)
-            if cw >= 4 and ch >= 6 and cell.ch.strip():
-                surf.blit(self._font.render(cell.ch, True, fg), (px, py))
 
     def _blink_on(self, *, freq: float = 3.5) -> bool:
         return int(time.monotonic() * freq) % 2 == 0
@@ -241,7 +241,7 @@ class IsoCharacterRenderer:
         floor_proj: list[tuple[int, int]] = []
         if show_floor:
             floor_proj.extend(
-                packed_layout_screen_offset(col, row)
+                layout_cell_to_screen(col, row)
                 for col, row in floor_packed_draw_map(
                     feet_cx, feet_cy, seed=floor_seed,
                 )

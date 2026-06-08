@@ -89,11 +89,9 @@ Voxel-edits в этом режиме — для превью; основной �
 
 ## Пол и масштаб
 
-- Пол: **5×5 diag iso** тайлов `@@_/_@@` (= **1×1 м**), `TILES_PER_M_XY=5`, `TILES_PER_M_Z=10`.
-- Размещение: tip `(tx−ty, tx+ty)`, экран — **игровой 2:1 iso** (`IsoProjector`); шахматная раскраска по `(tx, ty)`.
-- Эталон **раскладки** пола 5×5: `EDITOR_FLOOR_5X5_TILE_REFERENCE` — 25 букв, каждая **4 раза** (по одному `@` штампа 3×2); в игре глиф один, буквы только для теста. См. `docs/ISO_LAYOUT.md`.
-- **Отрисовка** в редакторе: сетка **19×10 packed layout** — тот же **ромб**, что `EDITOR_FLOOR_5X5_TILE_REFERENCE` (`floor_packed_draw_map`, `TILE_SLOT_VIEW`). **Не** iso-проекция `(su, sv)` — она даёт прямоугольник/«лесенку», не эталон.
-- Персонаж стоит **на полу** (pivot по `floor_z`, не по центру bbox).
+- **Отрисовка:** **1×1 м packed diamond** через `src/engine/floor` (`TILE_SLOT_VIEW`, golden `19×10`).
+- **Размер патча персонажа:** **1 м** (`EDITOR_FLOOR_TILES=5`). Больший патч — в level editor (`editor_floor_patch_tiles()`, по умолчанию **5 м** → 25×25 tiles).
+- Персонаж в **центре** ромба. Раскладка осей на экране (силуэты `tx` / `ty`) — `docs/ISO_LAYOUT.md` § Axis silhouettes; эталон букв: `EDITOR_FLOOR_5X5_TILE_REFERENCE`.
 - Тени: самозатенение столбцов + силуэт на полу + освещение.
 - **Масштаб превью:** 1× / 2× / 3× / 4× — колёсико или +/- над iso view (не влияет на игру).
 
@@ -135,7 +133,8 @@ HUD показывает `elev …°  orbit …°`. Влияет на пол и 
 | `src/characters/editor_diagnostics.py` | s/a/e markers |
 | `src/characters/editor_shading.py` | Column + floor shadows |
 | `src/characters/editor_lighting.py` | Направление света, ambient/light |
-| `src/characters/editor_floor.py` | Diag iso пол 5×5 с глифами |
+| `src/characters/editor_floor.py` | Re-export `src/engine/floor` (legacy imports) |
+| `src/engine/` | Layout, projection, floor, world queue — см. `docs/ENGINE.md` |
 | `src/characters/editor_voxel_tools.py` | Select / move / create |
 | `src/prototype/dia_scale/iso_character_renderer.py` | Fixed iso preview |
 

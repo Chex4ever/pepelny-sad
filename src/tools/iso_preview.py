@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 def resolve_preview_mode(preferred: str | None = None) -> str:
     """Match game default: gpu when PEPELNY_RENDER=gpu and GL works, else iso."""
-    raw = (preferred or os.environ.get("PEPELNY_RENDER", "gpu")).strip().lower()
+    raw = (preferred or os.environ.get("PEPELNY_RENDER", "iso")).strip().lower()
     if raw in ("iso", "cpu"):
         return "iso"
     if raw == "gpu":
@@ -72,11 +72,20 @@ def build_surface_draw_queue(
     h: int,
 ) -> list[tuple]:
     """Same queue layout and z rules as MapRenderer.build_iso_draw_queue (surface)."""
+    from src.constants import CHUNK_SIZE
+
     queue: list[tuple] = []
+    base_wx = chunk.cx * CHUNK_SIZE
+    base_wy = chunk.cy * CHUNK_SIZE
     for dy in range(h):
         for dx in range(w):
             wx, wy = wx0 + dx, wy0 + dy
-            col = chunk.to_column(dx, dy)
+            lx = wx - base_wx
+            ly = wy - base_wy
+            if not chunk.in_bounds(lx, ly) and chunk.in_bounds(dx, dy):
+                # Legacy biome_viewer patch: Chunk(0,0) stores cells at (dx, dy).
+                lx, ly = dx, dy
+            col = chunk.to_column(lx, ly)
             queue.append(
                 (
                     wx + wy,
